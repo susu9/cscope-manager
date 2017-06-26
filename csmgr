@@ -40,7 +40,7 @@ ctags_plat_args = {
 diff_args=("diff", "-u", csdb, csdb_backup)
 
 tag_db = ("cscope.in.out", "cscope.out", "cscope.po.out", "tags")
-suffix_list = ('.c', '.h', '.js')
+suffix_list = ('.c', '.h', '.js', '.cpp')
 
 def loge(s):
 	print(RED + s + NONE)
