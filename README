@@ -1,4 +1,4 @@
-This is a simple script to help you create cscope.files.
+This is a simple script to help you create cscope.files and run cscope and ctags command.
 
 Features:
 1. Add files
