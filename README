@@ -1,0 +1,9 @@
+This is a simple script to help you create cscope.files.
+
+Features:
+1. Add files
+- csmgr a.c b.c 
+2. Add folder
+- csmdr my_src/
+3. Remove duplicate file pathes
+4. Remove symbolic link
