@@ -7,3 +7,9 @@ Features:
 - csmdr my_src/
 3. Remove duplicate file pathes
 4. Remove symbolic link
+
+Usage: /Users/rickchang/bin/csmgr [-f | -d | -h] <dir | file>...
+  -f: forcely regenerate tags from cscope.files
+  -r: recover tags to the last change
+  -d: delete all meta data except for cscope.files
+  -h: detailed information for arguments
