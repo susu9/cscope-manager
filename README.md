@@ -5,7 +5,7 @@ This is a simple script to help you create cscope.files and run cscope and ctags
 
 ![example](https://github.com/susu9/cscope-manager/blob/master/screenshot-1.png)
 
-## Features:
+## Features
 1. Add files
 ```shell
 $csmgr a.c b.c
@@ -18,8 +18,10 @@ csmdr my_src/
 4. Remove symbolic link
 
 ## Usage
+```shell
 Usage: /Users/rickchang/bin/csmgr [-f | -d | -h] <dir | file>...
   -f: forcely regenerate tags from cscope.files
   -r: recover tags to the last change
   -d: delete all meta data except for cscope.files
   -h: detailed information for arguments
+```
