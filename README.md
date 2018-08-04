@@ -18,7 +18,7 @@ csmdr my_src/
 4. Remove symbolic link
 
 ## Usage
-```shell
+```
 Usage: /Users/rickchang/bin/csmgr [-f | -d | -h] <dir | file>...
   -f: forcely regenerate tags from cscope.files
   -r: recover tags to the last change
