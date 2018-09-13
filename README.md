@@ -17,6 +17,12 @@ csmdr my_src/
 3. Remove duplicate file pathes
 4. Remove symbolic link
 
+## Add suffix 
+```shell
+# modify suffix_list variable
+suffix_list = ('.c', '.h', '.js', '.cpp')
+```
+
 ## Usage
 ```
 Usage: /Users/rickchang/bin/csmgr [-f | -d | -h] <dir | file>...
