@@ -13,151 +13,275 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys, os, subprocess, shutil, time
+from __future__ import print_function
+import sys, os, subprocess, shutil, time, argparse, re
 
-RED   = "\x1b[31m"
-GREEN = "\x1b[32m"
-NONE  = "\x1b[0m"
-MAX_SHOW = 20
+if hasattr(__builtins__, 'raw_input'):
+    input = raw_input
+try:
+    import configparser as ConfigParser
+except ImportError:
+    import ConfigParser
 
-csdb="cscope.files"
-csdb_backup="." + csdb
-csdb_tmp=".t" + csdb
+RED    = "\x1b[31m"
+GREEN  = "\x1b[32m"
+YELLOW = "\x1b[33m"
+NONE   = "\x1b[0m"
 
-cscope_args=("cscope", "-bqk")
-ctags_args=("ctags", "-a", "-L", csdb)
-ctags_plat_args = {
-    "linux": ctags_args,
-    "linux2": ctags_args,
-    "darwin": ("/usr/local/bin/ctags", "-a", "-L", csdb)
+CONFIG = {
+    'config_path': '~/.csmgr.config',
+    'backup_prefix': '.tmp.',
+    'suffixes': '.c .h .js .cpp .py',
+    'out_list': 'cscope.files',
+    'meta_files': 'cscope.in.out cscope.out cscope.po.out tags',
+    'exclude_dirs': '.git node_modules', 
+    'exec_cmds': 'cscope -bqk -i $out_list && ctags -a -L $out_list',
+    'display_max': 20,
+    'delim': "-" * 80,
+    'delim_end': '=' * 80,
 }
 
-diff_args=("diff", "-u", csdb, csdb_backup)
+def Log(s, endPat=None):
+    print(s, end=endPat)
+    sys.stdout.flush()
 
-tag_db = ("cscope.in.out", "cscope.out", "cscope.po.out", "tags")
-suffix_list = ('.c', '.h', '.js', '.cpp')
+def Loge(s):
+    Log(RED + s + NONE)
 
-def loge(s):
-    print(RED + s + NONE)
+def Logm(s, endPat=None):
+    Log(GREEN + s + NONE, endPat)
 
-def logm(s):
-    print(GREEN + s + NONE)
+def Logw(s):
+    Log(YELLOW + s + NONE)
 
-def filterdir(folder):
-    flist = []
-    for path, dirs, files in os.walk(folder):
-        for f in files:
-            flist += filterfile(os.path.join(path, f))
-    return flist
+def Logv(s, verbose):
+    if verbose:
+        Log(s)
 
-def filterfile(path):
-    return [path] if path.endswith(suffix_list) and not os.path.islink(path) else []
+class FakeSection(object):
+    SECTION = 'fake section'
+    def __init__(self, f, name):
+        self.f = f
+        self.first = True
+        self.sectionName = "[%s]\n" % name
 
-def deletemeta():
-    for f in tag_db:
+    def readline(self):
+        if self.first:
+            self.first = False
+            return self.sectionName
+        return self.f.readline()
+
+    def __iter__(self):
+        if self.first:
+            self.first = False
+            yield self.sectionName
+        line = self.f.readline()
+        while line:
+            yield line
+            line = self.f.readline()
+
+def InitConfig():
+    config_file = os.path.expanduser(CONFIG['config_path'])
+    if not os.path.isfile(config_file):
+        return
+    Log("Use config file: %s" % config_file)
+    config = ConfigParser.SafeConfigParser()
+    config.readfp(FakeSection(open(config_file), FakeSection.SECTION))
+    for key, val in CONFIG.items():
+        if not config.has_option(FakeSection.SECTION, key):
+            continue
+        val = config.get(FakeSection.SECTION, key)
+        CONFIG[key] = val
+    return
+
+def SetConfig(opts):
+    CONFIG['display_max'] = int(CONFIG['display_max'])
+    config = vars(opts)
+    for key, val in CONFIG.items():
+        if key in config and config[key] is not None:
+            continue
+        config[key] = val
+
+    cmds = []
+    for cmd in config['exec_cmds']:
+        cmd = cmd.replace('$out_list', config['out_list'])
+        cmds.append(tuple(re.split('\s+', cmd.strip())))
+    config['exec_cmds'] = cmds
+    config['suffixes'] = tuple(config['suffixes'])
+    config['exclude_dirs'] = list(map(lambda x: x.rstrip('/'), config['exclude_dirs']))
+    return opts
+
+def ShowPath(opts, line, path):
+    if line > opts.display_max:
+        return
+    if line == opts.display_max:
+        Log('...')
+        return
+    Log(path)
+
+def DeleteMeta(opts):
+    print('Remove %s' % ' '.join(opts.meta_files))
+    for f in opts.meta_files:
         try:
             os.remove(f)
         except:
             pass
+    return 0
 
-def updatetag(regen=False):
+def UpdateTag(opts, regen=False):
     if regen:
-        deletemeta()
+        DeleteMeta(opts)
+    Logm("Generating tag ...", '')
     start_time = time.time()
-    subprocess.call(cscope_args)
-    subprocess.call(ctags_plat_args[sys.platform])
+    for cmd in opts.exec_cmds:
+        subprocess.call(cmd)
     elapsed_time = time.time() - start_time
-    logm("Updating tag done. (" + str(round(elapsed_time, 3)) + " seconds)")
+    Logm("done (" + str(round(elapsed_time, 3)) + " seconds)")
+    return 0
 
-def get_taglist(path):
-    if os.path.isfile(path):
-        return filterfile(path);
-    elif os.path.isdir(path):
-        return filterdir(path);
-    else:
-        loge("'" + path + "' not exited.")
-        return []
+def BackupFileList(opts):
+    path = opts.out_list
+    shutil.copy2(path, opts.backup_prefix + path)
 
-def backup_taglist():
-    shutil.copy2(csdb, csdb_backup)
-
-def showdiff_taglist():
-    subprocess.call(diff_args)
-
-def recover_taglist():
-    if not (os.path.isfile(csdb) or os.path.isfile(csdb_backup)):
+def RecoverFileList(opts):
+    cur = opts.out_list
+    backup = opts.backup_prefix + cur
+    tmp = backup + ".tmp"
+    if not os.path.isfile(cur):
+        if os.path.isfile(backup):
+            os.rename(backup, cur)
         return
-    os.rename(csdb, csdb_tmp)
-    os.rename(csdb_backup, csdb)
-    os.rename(csdb_tmp, csdb_backup)
-    logm("Recoving taglist Done.")
 
-def save_taglist(l):
-    n = len(l)
-    if n == 0:
-        return 0
+    if not os.path.isfile(backup):
+        Log('No previous version.')
+        return
+    os.rename(cur, tmp)
+    os.rename(backup, cur)
+    os.rename(tmp, backup)
+    Logm("Rollback list file ...Done")
 
-    if os.path.isfile(csdb):
-        backup_taglist()
+def SaveFileList(opts, filelist):
+    if len(filelist) == 0:
+        return
 
-    with open(csdb, 'a') as f:
-        for i, t in enumerate(l):
-            if i < MAX_SHOW:
-                print(t)
-            f.write(t + "\n")
+    filename = opts.out_list
+    if os.path.isfile(filename):
+        BackupFileList(opts)
 
-    if MAX_SHOW and n > MAX_SHOW:
-        print('...')
-    return n
+    with open(filename, 'a') as f:
+        for i, path in enumerate(filelist):
+            f.write(path + "\n")
 
-def add_taglist(l):
-    addlist = []
-    db = set(opendb())
+def IsExclude(opts, path):
+    for exclude_dir in opts.exclude_dirs:
+        if path.startswith(exclude_dir):
+            return True
+    return False
 
-    for t in l:
-        if not t in db:
-            addlist.append(t)
-    return save_taglist(addlist)
+def FilterDir(opts, folder, file_list, existed_set):
+    for i, (path, dirs, files) in enumerate(os.walk(folder)):
+        for f in files:
+            if IsExclude(opts, os.path.relpath(path, folder)):
+                continue;
+            full_path = os.path.join(path, f)
+            FilterFile(opts, full_path, file_list, existed_set)
 
-def opendb():
-    if not os.path.isfile(csdb):
+def FilterFile(opts, path, file_list, existed_set):
+    if not path.endswith(opts.suffixes) or os.path.islink(path):
+        return
+    if path in existed_set:
+        return
+    ShowPath(opts, len(file_list), path)
+    file_list.append(path)
+
+def GetFileList(opts):
+    start_time = time.time()
+    existed_set = set(LoadFileList(opts))
+    file_list = []
+    for path in opts.path:
+        if os.path.isfile(path):
+            FilterFile(opts, path, file_list, existed_set)
+        elif os.path.isdir(path):
+            FilterDir(opts, path, file_list, existed_set)
+        else:
+            Loge("'" + path + "' not exited.")
+    elapsed_time = time.time() - start_time
+    Logm('Added %d files (%s seconds)' % (len(file_list), round(elapsed_time, 3)))
+    return file_list
+
+def LoadFileList(opts):
+    name = opts.out_list
+    if not os.path.isfile(name):
         return []
-    with open(csdb, 'r') as f:
+    with open(name, 'r') as f:
         return f.read().splitlines()
 
-def usage(name, detail=False):
-    print("Usage: " + name + " [-f | -d | -h] <dir | file>...")
-    if detail:
-        print("  -f: forcely regenerate tags from cscope.files")
-        print("  -r: recover tags to the last change")
-        print("  -d: delete all meta data except for cscope.files")
-        print("  -h: detailed information for arguments")
+def ParseArguments(argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path', nargs='*', default=None,
+                        help = 'ex. dir/, file.c')
+    parser.add_argument('-o', '--out-list', type=str,
+                        help='assign the name of ouput list file (default: %s)' % CONFIG['out_list'])
+    parser.add_argument('-f', '--force', action='store_true', default=False,
+                        help='delete meta data and generate tag')
+    parser.add_argument('-r', '--roll-back', action='store_true', default=False,
+                        help='roll back list file to the previous version')
+    parser.add_argument('-s', '--suffixes', nargs='+', default=re.split('\s+', CONFIG['suffixes']),
+                        help='assign suffixes filter (default: %s)' % CONFIG['suffixes'])
+    parser.add_argument('-m', '--meta-files', nargs='+', default=re.split('\s+', CONFIG['meta_files']),
+                        help='assign meta data files (default: %s)' % CONFIG['meta_files'])
+    parser.add_argument('-e', '--exclude-dirs', nargs='+', default=re.split('\s+', CONFIG['exclude_dirs']),
+                        help='assign exclude dirs (default: %s)' % CONFIG['exclude_dirs'])
+    parser.add_argument('-d', '--delete-meta', action='store_true', default=False,
+                        help='delete all meta data')
+    parser.add_argument('-x', '--exec-cmds', nargs='+', default=CONFIG['exec_cmds'].split('&&'),
+                        help='assign cmd to generate tag. $out_list will be treated as list file (default: %s)' % CONFIG['exec_cmds'])
+    parser.add_argument('--verbose', action='store_true', default=False,
+                        help='show more logs')
+    parser.add_argument('-v', '--version', action='version', version='1.0.0')
+
+    opts = SetConfig(parser.parse_args(argv[1:]))
+    Logv(opts, opts.verbose)
+    return opts, parser
+
+def UserVerify(msg, default_yes=False):
+    yes = set(['y', 'yes'])
+    try:
+        key = input('%s (%s)? ' % (msg, 'Y/n' if default_yes else 'y/N')).lower()
+    except KeyboardInterrupt as e:
+        print()
+        sys.exit(1)
+    if key is None:
+        return default_yes
+    return key in yes
 
 def main(argv):
-    taglist = []
+    InitConfig()
 
-    if len(argv) == 1:
-        usage(argv[0])
-        sys.exit(1)
+    opts, parser = ParseArguments(argv)
+    if opts.delete_meta:
+        if not UserVerify('Remove %s' % ' '.join(opts.meta_files)):
+            return 1
+        return DeleteMeta(opts)
+    if opts.force:
+        return UpdateTag(opts, True)
+    if opts.roll_back:
+        RecoverFileList(opts)
+        return
+    if len(opts.path) == 0:
+        parser.print_help()
+        return 1
+    Log(opts.delim_end)
 
-    if argv[1] == '-d':
-        return deletemeta()
-    elif argv[1] == '-f':
-        return updatetag(True)
-    elif argv[1] == '-r':
-        recover_taglist()
-        return updatetag(True)
-    elif argv[1] == '-h':
-        return usage(argv[0], True)
-
-    for path in argv[1:]:
-        taglist += get_taglist(path)
-
-    n = add_taglist(taglist)
-    logm('Add ' + str(n) + ' file')
-
-    if n:
-        updatetag()
+    Log("Getting file list ...")
+    Log(opts.delim)
+    file_list = GetFileList(opts)
+    SaveFileList(opts, file_list)
+    Log(opts.delim_end)
+    if len(file_list) == 0:
+        return 0
+    return UpdateTag(opts)
 
 if __name__ == '__main__':
-    main(sys.argv)
+    sys.exit(main(sys.argv))
+
