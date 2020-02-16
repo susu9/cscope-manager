@@ -4,7 +4,7 @@
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/susu9/cscope-manager.svg)
 ![GitHub](https://img.shields.io/github/license/susu9/cscope-manager.svg)
 # cscope-manager
-Help you manage cscope/ctags tags
+A tool helps you manage cscope/ctags tags
 
 # Installation
 ```shell

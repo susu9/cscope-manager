@@ -1,6 +1,7 @@
 import setuptools
 
 # Upload:
+# rm -rf build/ csmgr.egg-info/ dist/
 # python3 setup.py sdist bdist_wheel --universal
 # python3 -m twine upload dist/*
 
@@ -13,7 +14,7 @@ setuptools.setup(
      scripts=['csmgr'] ,
      author="Rick Chang",
      author_email="chchang915@gmail.com",
-     description="A tool help you manage cscope tags in a big project",
+     description="A tool helps you manage cscope/ctags tags",
      long_description=long_description,
    long_description_content_type="text/markdown",
      url="https://github.com/susu9/cscope-manager",
