@@ -1,6 +1,6 @@
-[![Pypi version](https://img.shields.io/pypi/v/csmgr)](https://pypi.org/project/csmgr/)
+[![Pypi version](https://img.shields.io/pypi/v/cscope-manager)](https://pypi.org/project/cscope-manager/)
 [![Build Status](https://travis-ci.com/susu9/cscope-manager.svg?branch=master)](https://travis-ci.com/susu9/cscope-manager)
-[![Python Compatibility](https://img.shields.io/pypi/pyversions/csmgr)](https://travis-ci.com/susu9/cscope-manager)
+[![Python Compatibility](https://img.shields.io/pypi/pyversions/cscope-manager)](https://travis-ci.com/susu9/cscope-manager)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/susu9/cscope-manager.svg)
 ![GitHub](https://img.shields.io/github/license/susu9/cscope-manager.svg)
 # cscope-manager
@@ -8,7 +8,7 @@ A tool helps you manage cscope/ctags tags
 
 # Installation
 ```shell
-pip install csmgr
+pip install cscope-manager
 ```
 
 ## Screenshot
@@ -34,11 +34,11 @@ delim_end = ****************************************
 ## Features
 1. Add files
 ```shell
-$csmgr a.c b.c
+csmgr a.c b.c
 ```
-2. Add folder
+2. Add folders
 ```shell
-$csmgr dir1/ dir2/
+csmgr dir1/ dir2/
 ```
 3. Remove duplicate file pathes
 4. Remove symbolic link

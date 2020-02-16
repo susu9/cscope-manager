@@ -259,7 +259,7 @@ def ParseArguments(argv):
                         help='assign cmd to generate tag. $out_list will be replaced by list file name. Cmds will be triggered only when a new file is added in $out_list. (default: %s)' % CONFIG['exec_cmds'])
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='show more logs')
-    parser.add_argument('-v', '--version', action='version', version='1.0.1')
+    parser.add_argument('-v', '--version', action='version', version='1.0.2')
 
     opts = SetConfig(parser.parse_args(argv[1:]))
     Logv(opts, opts.verbose)

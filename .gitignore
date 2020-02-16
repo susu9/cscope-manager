@@ -8,5 +8,5 @@ cscope.out
 cscope.po.out
 tags
 build/
-csmgr.egg-info/
+cscope_manager.egg-info/
 dist/

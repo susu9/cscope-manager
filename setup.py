@@ -9,8 +9,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-     name='csmgr',  
-     version='1.0.1',
+     name='cscope-manager',
+     version='1.0.2',
      scripts=['csmgr'] ,
      author="Rick Chang",
      author_email="chchang915@gmail.com",
