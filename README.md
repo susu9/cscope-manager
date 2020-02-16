@@ -1,6 +1,6 @@
-[![Pypi version](https://img.shields.io/pypi/v/cscope-manager)](https://pypi.org/project/cscope-manager/)
+[![Pypi version](https://img.shields.io/pypi/v/csmgr)](https://pypi.org/project/csmgr/)
 [![Build Status](https://travis-ci.com/susu9/cscope-manager.svg?branch=master)](https://travis-ci.com/susu9/cscope-manager)
-[![Python Compatibility](https://img.shields.io/pypi/pyversions/cscope-manager)](https://travis-ci.com/susu9/cscope-manager)
+[![Python Compatibility](https://img.shields.io/pypi/pyversions/csmgr)](https://travis-ci.com/susu9/cscope-manager)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/susu9/cscope-manager.svg)
 ![GitHub](https://img.shields.io/github/license/susu9/cscope-manager.svg)
 # cscope-manager
