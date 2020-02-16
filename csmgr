@@ -36,7 +36,7 @@ CONFIG = {
     'meta_files': 'cscope.in.out cscope.out cscope.po.out tags',
     'exclude_dirs': '.git node_modules', 
     'exec_cmds': 'cscope -bqk -i $out_list && ctags -a -L $out_list',
-    'display_max': 20,
+    'max_display': 20,
     'delim': "-" * 80,
     'delim_end': '=' * 80,
 }
@@ -95,32 +95,28 @@ def InitConfig():
     return
 
 def SetConfig(opts):
-    CONFIG['display_max'] = int(CONFIG['display_max'])
     config = vars(opts)
     for key, val in CONFIG.items():
         if key in config and config[key] is not None:
             continue
         config[key] = val
 
-    cmds = []
-    for cmd in config['exec_cmds']:
-        cmd = cmd.replace('$out_list', config['out_list'])
-        cmds.append(tuple(re.split('\s+', cmd.strip())))
-    config['exec_cmds'] = cmds
-    config['suffixes'] = tuple(config['suffixes'])
     config['exclude_dirs'] = list(map(lambda x: x.rstrip('/'), config['exclude_dirs']))
     return opts
 
 def ShowPath(opts, line, path):
-    if line > opts.display_max:
+    if line > opts.max_display:
         return
-    if line == opts.display_max:
+    if line == opts.max_display:
         Log('...')
         return
     Log(path)
 
 def DeleteMeta(opts):
-    print('Remove %s' % ' '.join(opts.meta_files))
+    if opts.dry_run:
+        Log('[dryrun] Remove %s' % ' '.join(opts.meta_files))
+        return 0
+    Log('Remove %s' % ' '.join(opts.meta_files))
     for f in opts.meta_files:
         try:
             os.remove(f)
@@ -128,15 +124,30 @@ def DeleteMeta(opts):
             pass
     return 0
 
+def Run(cmd):
+    if not cmd:
+        return
+    Log('Run %s ...' % cmd, '')
+    start_time = time.time()
+    subprocess.call(tuple(re.split('\s+', cmd)))
+    elapsed_time = time.time() - start_time
+    Log("done (" + str(round(elapsed_time, 3)) + "s)")
+
 def UpdateTag(opts, regen=False):
     if regen:
         DeleteMeta(opts)
-    Logm("Generating tag ...", '')
-    start_time = time.time()
+    Log("Generating tag ...")
+    Log(opts.delim)
+    cmds = []
     for cmd in opts.exec_cmds:
-        subprocess.call(cmd)
-    elapsed_time = time.time() - start_time
-    Logm("done (" + str(round(elapsed_time, 3)) + " seconds)")
+        cmd = cmd.replace('$out_list', opts.out_list).strip()
+        cmds.append(cmd)
+    for cmd in cmds:
+        if opts.dry_run:
+            Log('[dryrun] %s' % cmd)
+            continue
+        Run(cmd)
+    Log(opts.delim_end)
     return 0
 
 def BackupFileList(opts):
@@ -161,7 +172,7 @@ def RecoverFileList(opts):
     Logm("Rollback list file ...Done")
 
 def SaveFileList(opts, filelist):
-    if len(filelist) == 0:
+    if len(filelist) == 0 or opts.dry_run:
         return
 
     filename = opts.out_list
@@ -187,15 +198,20 @@ def FilterDir(opts, folder, file_list, existed_set):
             FilterFile(opts, full_path, file_list, existed_set)
 
 def FilterFile(opts, path, file_list, existed_set):
-    if not path.endswith(opts.suffixes) or os.path.islink(path):
+    if not path.endswith(tuple(opts.suffixes)) or os.path.islink(path):
         return
     if path in existed_set:
         return
     ShowPath(opts, len(file_list), path)
     file_list.append(path)
 
-def GetFileList(opts):
+def AddFileList(opts):
     start_time = time.time()
+    for path in opts.path:
+        if not os.path.exists(path):
+            Loge("'" + path + "' not exited.")
+            sys.exit(1)
+
     existed_set = set(LoadFileList(opts))
     file_list = []
     for path in opts.path:
@@ -203,10 +219,11 @@ def GetFileList(opts):
             FilterFile(opts, path, file_list, existed_set)
         elif os.path.isdir(path):
             FilterDir(opts, path, file_list, existed_set)
-        else:
-            Loge("'" + path + "' not exited.")
+    SaveFileList(opts, file_list)
+    if opts.dry_run:
+        Logm('[dryrun] ', '')
     elapsed_time = time.time() - start_time
-    Logm('Added %d files (%s seconds)' % (len(file_list), round(elapsed_time, 3)))
+    Logm('Added %d files (%ss)' % (len(file_list), round(elapsed_time, 3)))
     return file_list
 
 def LoadFileList(opts):
@@ -234,8 +251,12 @@ def ParseArguments(argv):
                         help='assign exclude dirs (default: %s)' % CONFIG['exclude_dirs'])
     parser.add_argument('-d', '--delete-meta', action='store_true', default=False,
                         help='delete all meta data')
+    parser.add_argument('--dry-run', action='store_true', default=False,
+                        help='show what would be done')
+    parser.add_argument('--max-display', type=int, default=CONFIG['max_display'],
+                        help='assign how many paths will be shown in the log')
     parser.add_argument('-x', '--exec-cmds', nargs='+', default=CONFIG['exec_cmds'].split('&&'),
-                        help='assign cmd to generate tag. $out_list will be treated as list file (default: %s)' % CONFIG['exec_cmds'])
+                        help='assign cmd to generate tag. $out_list will be replaced by list file name. Cmds will be triggered only when a new file is added in $out_list. (default: %s)' % CONFIG['exec_cmds'])
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='show more logs')
     parser.add_argument('-v', '--version', action='version', version='1.0.0')
@@ -249,7 +270,6 @@ def UserVerify(msg, default_yes=False):
     try:
         key = input('%s (%s)? ' % (msg, 'Y/n' if default_yes else 'y/N')).lower()
     except KeyboardInterrupt as e:
-        print()
         sys.exit(1)
     if key is None:
         return default_yes
@@ -273,14 +293,17 @@ def main(argv):
         return 1
     Log(opts.delim_end)
 
-    Log("Getting file list ...")
+    start_time = time.time()
+    ret = 0
+    Log("Searching file list ...")
     Log(opts.delim)
-    file_list = GetFileList(opts)
-    SaveFileList(opts, file_list)
+    new_list = AddFileList(opts)
     Log(opts.delim_end)
-    if len(file_list) == 0:
-        return 0
-    return UpdateTag(opts)
+    if len(new_list):
+        ret = UpdateTag(opts)
+    elapsed_time = time.time() - start_time
+    Logm("Completed (" + str(round(elapsed_time, 3)) + "s)")
+    return ret
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
