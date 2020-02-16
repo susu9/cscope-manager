@@ -1,0 +1,12 @@
+.*
+!.csmgr.config
+!.travis.yml
+!.gitignore
+cscope.files
+cscope.in.out
+cscope.out
+cscope.po.out
+tags
+build/
+csmgr.egg-info/
+dist/
