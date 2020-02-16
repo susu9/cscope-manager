@@ -265,23 +265,11 @@ def ParseArguments(argv):
     Logv(opts, opts.verbose)
     return opts, parser
 
-def UserVerify(msg, default_yes=False):
-    yes = set(['y', 'yes'])
-    try:
-        key = input('%s (%s)? ' % (msg, 'Y/n' if default_yes else 'y/N')).lower()
-    except KeyboardInterrupt as e:
-        sys.exit(1)
-    if key is None:
-        return default_yes
-    return key in yes
-
 def main(argv):
     InitConfig()
 
     opts, parser = ParseArguments(argv)
     if opts.delete_meta:
-        if not UserVerify('Remove %s' % ' '.join(opts.meta_files)):
-            return 1
         return DeleteMeta(opts)
     if opts.force:
         return UpdateTag(opts, True)

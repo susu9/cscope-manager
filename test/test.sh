@@ -22,7 +22,7 @@ testFile() {
     assertEquals 0 $? 
     grep -w test/file1.c cscope.files
     assertEquals 0 $? 
-    echo y | python csmgr -d
+    python csmgr -d
     rm cscope.files
     checkDelete "cscope.in.out cscope.out cscope.po.out tags"
 }
@@ -32,7 +32,7 @@ testForce() {
     assertEquals 0 $? 
     python csmgr -f
     assertEquals 0 $? 
-    echo y | python csmgr -d
+    python csmgr -d
     rm cscope.files
 }
 
@@ -43,7 +43,7 @@ testDir() {
     assertEquals 0 $? 
     grep -w test/dir/dir_file2.c cscope.files
     assertEquals 0 $? 
-    echo y | python csmgr -d
+    python csmgr -d
     rm cscope.files
 }
 
@@ -56,7 +56,7 @@ testSuffix() {
     assertNotEquals 0 $? 
     grep -w test/file2.cpp cscope.files
     assertEquals 0 $? 
-    echo y | python csmgr -d
+    python csmgr -d
     rm cscope.files
 }
 
@@ -64,14 +64,14 @@ testList() {
     python csmgr test/file1.c -o src.map 
     assertEquals 0 $? 
     grep -w test/file1.c src.map
-    echo y | python csmgr -d
+    python csmgr -d
     rm src.map
 }
 
 testMeta() {
     python csmgr . 
     assertEquals 0 $? 
-    echo y | python csmgr -d -m cscope.files cscope.in.out cscope.out cscope.po.out tags 
+    python csmgr -d -m cscope.files cscope.in.out cscope.out cscope.po.out tags 
     checkDelete "cscope.files cscope.in.out cscope.out cscope.po.out tags"
 }
 
@@ -81,7 +81,7 @@ testCmd() {
     assertEquals 0 $? 
     grep -w test/dir/dir_file2.c cscope.files
     assertEquals 0 $? 
-    echo y | python csmgr -d
+    python csmgr -d
     rm cscope.files
 }
 
@@ -92,7 +92,7 @@ testExclude() {
     assertNotEquals 0 $? 
     grep -w test/dir/dir_file2.c cscope.files
     assertNotEquals 0 $? 
-    echo y | python csmgr -d
+    python csmgr -d
     rm cscope.files
 }
 
@@ -112,7 +112,7 @@ testSuffix2() {
     assertNotEquals 0 $? 
     grep -w test/file2.cpp map.files
     assertEquals 0 $? 
-    echo y | python csmgr -d
+    python csmgr -d
     rm map.files
 }
 
@@ -123,7 +123,7 @@ testExclude2() {
     assertNotEquals 0 $? 
     grep -w test/dir/dir_file2.c map.files
     assertNotEquals 0 $? 
-    echo y | python csmgr -d
+    python csmgr -d
     rm map.files
 }
 
