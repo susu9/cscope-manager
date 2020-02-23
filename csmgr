@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-import sys, os, subprocess, shutil, time, argparse, re
+import sys, os, subprocess, shutil, time, argparse, re, shlex
 
 if hasattr(__builtins__, 'raw_input'):
     input = raw_input
@@ -116,6 +116,8 @@ def DeleteMeta(opts):
     if opts.dry_run:
         Log('[dryrun] Remove %s' % ' '.join(opts.meta_files))
         return 0
+    if os.path.isfile(opts.out_list):
+        BackupFileList(opts)
     Log('Remove %s' % ' '.join(opts.meta_files))
     for f in opts.meta_files:
         try:
@@ -124,30 +126,35 @@ def DeleteMeta(opts):
             pass
     return 0
 
-def Run(cmd):
+def Run(opts, cmd):
     if not cmd:
         return
-    Log('Run %s ...' % cmd, '')
+    if opts.dry_run:
+        Log('[dryrun] %s' % cmd)
+        return
+    Log('Run %s ...' % cmd)
+    Log(opts.delim)
     start_time = time.time()
-    subprocess.call(tuple(re.split('\s+', cmd)))
-    elapsed_time = time.time() - start_time
-    Log("done (" + str(round(elapsed_time, 3)) + "s)")
+    try:
+        return subprocess.call(tuple(shlex.split(cmd)))
+    except Exception as e:
+        Loge("Run cmd '%s' fail. (%s)" % (cmd, e))
+        return 1
+    finally:
+        elapsed_time = time.time() - start_time
+        Log("done (" + str(round(elapsed_time, 3)) + "s)")
 
 def UpdateTag(opts, regen=False):
     if regen:
         DeleteMeta(opts)
-    Log("Generating tag ...")
-    Log(opts.delim)
     cmds = []
     for cmd in opts.exec_cmds:
         cmd = cmd.replace('$out_list', opts.out_list).strip()
         cmds.append(cmd)
-    for cmd in cmds:
-        if opts.dry_run:
-            Log('[dryrun] %s' % cmd)
-            continue
-        Run(cmd)
     Log(opts.delim_end)
+    for cmd in cmds:
+        Run(opts, cmd)
+        Log(opts.delim_end)
     return 0
 
 def BackupFileList(opts):
@@ -158,17 +165,17 @@ def RecoverFileList(opts):
     cur = opts.out_list
     backup = opts.backup_prefix + cur
     tmp = backup + ".tmp"
-    if not os.path.isfile(cur):
-        if os.path.isfile(backup):
-            os.rename(backup, cur)
-        return
 
     if not os.path.isfile(backup):
         Log('No previous version.')
         return
-    os.rename(cur, tmp)
-    os.rename(backup, cur)
-    os.rename(tmp, backup)
+
+    if not os.path.isfile(cur):
+        shutil.copy2(backup, cur)
+    else:
+        os.rename(cur, tmp)
+        os.rename(backup, cur)
+        os.rename(tmp, backup)
     Logm("Rollback list file ...Done")
 
 def SaveFileList(opts, filelist):
