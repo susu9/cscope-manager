@@ -80,25 +80,37 @@ class FakeSection(object):
             yield line
             line = self.f.readline()
 
-def InitConfig():
-    config_file = os.path.expanduser(CONFIG['config_path'])
+def InitConfig(path, silent=True):
+    config_file = os.path.expanduser(path)
     if not os.path.isfile(config_file):
-        return
+        if not silent:
+            Loge("Can't find config file '%s'" % config_file)
+        return False
+
     Log("Use config file: %s" % config_file)
     config = ConfigParser.SafeConfigParser()
     config.readfp(FakeSection(open(config_file), FakeSection.SECTION))
-    for key, val in CONFIG.items():
+
+    for key in CONFIG:
         if not config.has_option(FakeSection.SECTION, key):
             continue
         val = config.get(FakeSection.SECTION, key)
         CONFIG[key] = val
-    return
+    return True
 
 def SetConfig(opts):
+    if opts.config_file and not InitConfig(opts.config_file, False):
+        sys.exit(1)
     config = vars(opts)
     for key, val in CONFIG.items():
         if key in config and config[key] is not None:
             continue
+        if key in ['suffixes', 'meta_files', 'exclude_dirs']:
+            val = re.split('\s+', val)
+        elif key in ['max_display']:
+            val = int(val)
+        elif key in ['exec_cmds']:
+            val = val.split('&&')
         config[key] = val
 
     config['exclude_dirs'] = list(map(lambda x: x.rstrip('/'), config['exclude_dirs']))
@@ -147,12 +159,8 @@ def Run(opts, cmd):
 def UpdateTag(opts, regen=False):
     if regen:
         DeleteMeta(opts)
-    cmds = []
     for cmd in opts.exec_cmds:
         cmd = cmd.replace('$out_list', opts.out_list).strip()
-        cmds.append(cmd)
-    Log(opts.delim_end)
-    for cmd in cmds:
         Run(opts, cmd)
         Log(opts.delim_end)
     return 0
@@ -213,6 +221,8 @@ def FilterFile(opts, path, file_list, existed_set):
     file_list.append(path)
 
 def AddFileList(opts):
+    Log("Searching file list ...")
+    Log(opts.delim)
     start_time = time.time()
     for path in opts.path:
         if not os.path.exists(path):
@@ -231,6 +241,7 @@ def AddFileList(opts):
         Logm('[dryrun] ', '')
     elapsed_time = time.time() - start_time
     Logm('Added %d files (%ss)' % (len(file_list), round(elapsed_time, 3)))
+    Log(opts.delim_end)
     return file_list
 
 def LoadFileList(opts):
@@ -248,21 +259,23 @@ def ParseArguments(argv):
                         help='assign the name of ouput list file (default: %s)' % CONFIG['out_list'])
     parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='delete meta data and generate tag')
+    parser.add_argument('-c', '--config-file', type=str,
+                        help='assign config file (default: %s)' % CONFIG['config_path'])
     parser.add_argument('-r', '--roll-back', action='store_true', default=False,
                         help='roll back list file to the previous version')
-    parser.add_argument('-s', '--suffixes', nargs='+', default=re.split('\s+', CONFIG['suffixes']),
+    parser.add_argument('-s', '--suffixes', nargs='+', default=None,
                         help='assign suffixes filter (default: %s)' % CONFIG['suffixes'])
-    parser.add_argument('-m', '--meta-files', nargs='+', default=re.split('\s+', CONFIG['meta_files']),
+    parser.add_argument('-m', '--meta-files', nargs='+', default=None,
                         help='assign meta data files (default: %s)' % CONFIG['meta_files'])
-    parser.add_argument('-e', '--exclude-dirs', nargs='+', default=re.split('\s+', CONFIG['exclude_dirs']),
+    parser.add_argument('-e', '--exclude-dirs', nargs='+', default=None,
                         help='assign exclude dirs (default: %s)' % CONFIG['exclude_dirs'])
     parser.add_argument('-d', '--delete-meta', action='store_true', default=False,
                         help='delete all meta data')
     parser.add_argument('--dry-run', action='store_true', default=False,
                         help='show what would be done')
-    parser.add_argument('--max-display', type=int, default=CONFIG['max_display'],
+    parser.add_argument('--max-display', type=int,
                         help='assign how many paths will be shown in the log')
-    parser.add_argument('-x', '--exec-cmds', nargs='+', default=CONFIG['exec_cmds'].split('&&'),
+    parser.add_argument('-x', '--exec-cmds', nargs='+', default=None,
                         help='assign cmd to generate tag. $out_list will be replaced by list file name. Cmds will be triggered only when a new file is added in $out_list. (default: %s)' % CONFIG['exec_cmds'])
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='show more logs')
@@ -273,7 +286,7 @@ def ParseArguments(argv):
     return opts, parser
 
 def main(argv):
-    InitConfig()
+    InitConfig(CONFIG['config_path'])
 
     opts, parser = ParseArguments(argv)
     if opts.delete_meta:
@@ -290,10 +303,7 @@ def main(argv):
 
     start_time = time.time()
     ret = 0
-    Log("Searching file list ...")
-    Log(opts.delim)
     new_list = AddFileList(opts)
-    Log(opts.delim_end)
     if len(new_list):
         ret = UpdateTag(opts)
     elapsed_time = time.time() - start_time

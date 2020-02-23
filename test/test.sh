@@ -85,26 +85,20 @@ testCmd() {
     rm cscope.files
 }
 
+CONFIG_FILE='test/.csmgr.config'
+
 testExclude() {
-    init_config
-    python csmgr test -e dir/
+    python csmgr -c $CONFIG_FILE  test -e dir/
     grep -w test/dir/dir_file1.c cscope.files
     assertNotEquals 0 $? 
     grep -w test/dir/dir_file2.c cscope.files
     assertNotEquals 0 $? 
-    python csmgr -d
+    python csmgr -c $CONFIG_FILE -d
     rm cscope.files
 }
 
-init_config() {
-    if [ ! -e ~/.csmgr.config ]; then
-        sudo cp -a test/.csmgr.config ~/ 
-    fi
-}
-
 testSuffix2() {
-    init_config
-    python csmgr .
+    python csmgr -c $CONFIG_FILE .
     assertEquals 0 $? 
     grep -w test/dir/dir_file1.c map.files
     assertNotEquals 0 $? 
@@ -112,18 +106,18 @@ testSuffix2() {
     assertNotEquals 0 $? 
     grep -w test/file2.cpp map.files
     assertEquals 0 $? 
-    python csmgr -d
+    python csmgr -c $CONFIG_FILE -d
     rm map.files
 }
 
 testExclude2() {
-    init_config
-    python csmgr test
+    python csmgr -c $CONFIG_FILE test
     grep -w test/dir/dir_file1.c map.files
     assertNotEquals 0 $? 
     grep -w test/dir/dir_file2.c map.files
     assertNotEquals 0 $? 
-    python csmgr -d
+    python csmgr -c $CONFIG_FILE -d
     rm map.files
 }
 
+gg
