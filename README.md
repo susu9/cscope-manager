@@ -19,51 +19,65 @@ pip install cscope-manager
 You can create a config file in ~/.csmgr.config to customize your preference
 ```
 # Supported configurations and format
-backup_prefix = .tmp.
+project_list: .csmgr.project
 suffixes = .cpp
 out_list = map.files
 meta_files = cscope.in.out cscope.out cscope.po.out tags
 exclude_dirs = dir
 # Note: Only supprot $out_list. Not support other variables interpolation
-exec_cmds = cscope -bqk -i $out_list && ctags -a -L $out_list
+exec_cmds = cscope -bqk -i $out_list && ctags -L $out_list
 display_max = 20
 delim     = ........................................
 delim_end = ****************************************
 ```
 
 ## Features
-1. Add files
+1. Add files to project list (tracking list)
 ```shell
 csmgr a.c b.c
 ```
-2. Add folders
+2. Add folders to project list (tracking list)
 ```shell
 csmgr dir1/ dir2/
 ```
-3. Remove duplicate file pathes
-4. Remove symbolic link
+3. Generate cscope.files by project list
+```shell
+# add current directory to project list
+csmgr .
+# files layout have been changed under ./
+csmgr -u
+# cscope.files is updated
+```
+4. Remove duplicate file pathes
+5. Remove symbolic link
 
 ## Usage
 ```
-usage: csmgr [-h] [-o OUT_LIST] [-f] [-r] [-s SUFFIXES [SUFFIXES ...]]
-             [-m META_FILES [META_FILES ...]]
+Use config file: /Users/rickchang/.csmgr.config
+usage: csmgr [-h] [-u] [-s SUFFIXES [SUFFIXES ...]] [-f] [-c CONFIG_FILE]
+             [-o OUT_LIST] [-m META_FILES [META_FILES ...]]
              [-e EXCLUDE_DIRS [EXCLUDE_DIRS ...]] [-d] [--dry-run]
              [--max-display MAX_DISPLAY] [-x EXEC_CMDS [EXEC_CMDS ...]]
              [--verbose] [-v]
              [path [path ...]]
 
 positional arguments:
-  path                  ex. dir/, file.c
+  path                  add path to project list (.csmgr.project) and generate
+                        tag if project list is changed ex. dir/, file.c
 
 optional arguments:
   -h, --help            show this help message and exit
-  -o OUT_LIST, --out-list OUT_LIST
-                        assign the name of ouput list file (default:
-                        cscope.files)
-  -f, --force           delete meta data and generate tag
-  -r, --roll-back       roll back list file to the previous version
+  -u, --update          update list file according to project list and
+                        generate tag
   -s SUFFIXES [SUFFIXES ...], --suffixes SUFFIXES [SUFFIXES ...]
-                        assign suffixes filter (default: .c .h .js .cpp .py)
+                        assign suffixes filter (default: .c .h .js .cpp .py
+                        .scss)
+  -f, --force           delete meta data and generate tag
+  -c CONFIG_FILE, --config-file CONFIG_FILE
+                        assign config file (default: ~/.csmgr.config)
+  -o OUT_LIST, --out-list OUT_LIST
+                        assign the name of output list file (default:
+                        cscope.files)
   -m META_FILES [META_FILES ...], --meta-files META_FILES [META_FILES ...]
                         assign meta data files (default: cscope.in.out
                         cscope.out cscope.po.out tags)
@@ -77,7 +91,7 @@ optional arguments:
                         assign cmd to generate tag. $out_list will be replaced
                         by list file name. Cmds will be triggered only when a
                         new file is added in $out_list. (default: cscope -bqk
-                        -i $out_list && ctags -a -L $out_list)
+                        -i $out_list && ctags -L $out_list)
   --verbose             show more logs
   -v, --version         show program's version number and exit
 ```
