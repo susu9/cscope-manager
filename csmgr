@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-import sys, os, subprocess, shutil, time, argparse, re, shlex, itertools
+import sys, os, subprocess, shutil, time, argparse, re, shlex, itertools, collections
 
 if hasattr(__builtins__, 'raw_input'):
     input = raw_input
@@ -31,12 +31,11 @@ NONE   = "\x1b[0m"
 CONFIG = {
     'config_path': '~/.csmgr.config',
     'project_list': '.csmgr.project',
-    'backup_prefix': '.tmp.',
     'suffixes': '.c .h .js .cpp .py',
     'out_list': 'cscope.files',
     'meta_files': 'cscope.in.out cscope.out cscope.po.out tags',
     'exclude_dirs': '.git node_modules', 
-    'exec_cmds': 'cscope -bqk -i $out_list && ctags -a -L $out_list',
+    'exec_cmds': 'cscope -bqk -i $out_list && ctags -L $out_list',
     'max_display': 20,
     'delim': "-" * 80,
     'delim_end': '=' * 80,
@@ -80,6 +79,73 @@ class FakeSection(object):
         while line:
             yield line
             line = self.f.readline()
+
+class FileListMgr:
+    def __init__(self, init_list, exclude_dirs, max_display, suffixes):
+        self.list_count = collections.Counter(init_list)
+        self.exclude_dirs = exclude_dirs
+        self.max_display = max_display
+        self.suffixes = suffixes
+        self.addCount = 0
+        self.rmCount = 0
+        self.showCount = 0
+
+    def IsExclude(self, path):
+        for exclude_dir in self.exclude_dirs:
+            if path.startswith(exclude_dir):
+                return True
+        return False
+
+    def SearchAndUpdate(self, pathes):
+        self.showCount = 0
+        for path in pathes:
+            if os.path.isfile(path):
+                self.FilterFile(path, False)
+            elif os.path.isdir(path):
+                self.FilterDir(path)
+
+        for key, val in self.list_count.items():
+            if val == 1:
+                self.Show('Remove %s' % key)
+                self.rmCount += 1
+ 
+    def GetFileList(self):
+        cur_list = []
+        for key, val in self.list_count.items():
+            if val != 1:
+                cur_list.append(key)
+        return sorted(cur_list)
+
+    def Show(self, s):
+        if self.showCount > self.max_display:
+            return
+        Log('%s' % '...' if self.showCount == self.max_display else s)
+        self.showCount += 1
+
+    def FilterFile(self, path, suffixCheck=True):
+        if os.path.islink(path):
+            return
+
+        if suffixCheck and not path.endswith(tuple(self.suffixes)):
+            return
+
+        list_count = self.list_count
+        if path in list_count:
+            if list_count[path]:
+                list_count[path] = 0
+            return
+
+        self.Show('Add %s' % path)
+        list_count[path] = 0
+        self.addCount += 1
+
+    def FilterDir(self, folder):
+        for i, (path, dirs, files) in enumerate(os.walk(folder)):
+            for f in files:
+                if self.IsExclude(os.path.relpath(path, folder)):
+                    continue;
+                full_path = os.path.join(path, f)
+                self.FilterFile(os.path.relpath(full_path))
 
 def TaskDecorator(start_msg=None, end_msg='[done]'):
     def decorator(func):
@@ -132,14 +198,6 @@ def SetConfig(opts):
     config['exclude_dirs'] = list(map(lambda x: x.rstrip('/'), config['exclude_dirs']))
     return opts
 
-def ShowPath(opts, line, path):
-    if line > opts.max_display:
-        return
-    if line == opts.max_display:
-        Log('...')
-        return
-    Log(path)
-
 def DeleteMeta(opts):
     if opts.dry_run:
         Log('(dryrun) Remove %s' % ' '.join(opts.meta_files))
@@ -182,29 +240,6 @@ def SaveFileList(opts, filename, filelist):
         for path in filelist:
             f.write(path + "\n")
 
-def IsExclude(opts, path):
-    for exclude_dir in opts.exclude_dirs:
-        if path.startswith(exclude_dir):
-            return True
-    return False
-
-def FilterDir(opts, folder, file_list, existed_set):
-    for i, (path, dirs, files) in enumerate(os.walk(folder)):
-        for f in files:
-            if IsExclude(opts, os.path.relpath(path, folder)):
-                continue;
-            full_path = os.path.join(path, f)
-            FilterFile(opts, os.path.relpath(full_path), file_list, existed_set)
-
-def FilterFile(opts, path, file_list, existed_set):
-    if not path.endswith(tuple(opts.suffixes)) or os.path.islink(path):
-        return
-    if path in existed_set:
-        return
-    ShowPath(opts, len(file_list), path)
-    file_list.append(path)
-    existed_set.add(path)
-
 def GetProjectPath(path):
     rel_path = os.path.relpath(path)
     if rel_path == '.':
@@ -232,41 +267,28 @@ def GetProjectList(opts, add_pathes=None):
         Log('%sAdded path \'%s\' to project list' % ('(dryrun) ' if opts.dry_run else '', path))
     if not valid_pathes:
         Logw('Pathes already exists in project list (%s).' % opts.project_list)
+        sys.exit(1)
+
+    new_list = sorted(itertools.chain(pathes, valid_pathes))
     if not opts.dry_run:
-        SaveFileList(opts, opts.project_list, sorted(itertools.chain(pathes, valid_pathes)))
-    return valid_pathes
-
-def GetRemoveFileList(opts, pathes):
-    return [path for path in pathes if not os.path.exists(path)]
-
-def GetNewFileList(opts, pathes, existed_set):
-    file_list = []
-    for path in pathes:
-        if os.path.isfile(path):
-            FilterFile(opts, path, file_list, existed_set)
-        elif os.path.isdir(path):
-            FilterDir(opts, path, file_list, existed_set)
-    return file_list
+        SaveFileList(opts, opts.project_list, new_list)
+    return new_list
 
 @TaskDecorator('Checking file list ...')
 def UpdateFileList(opts, project_list):
-    file_list = LoadFileList(opts.out_list)
-    existed_set = set(file_list)
+    fileMgr = FileListMgr(LoadFileList(opts.out_list), opts.exclude_dirs, opts.max_display, opts.suffixes)
 
-    new_list = GetNewFileList(opts, project_list, existed_set)
-    remove_list = GetRemoveFileList(opts, file_list)
-    remain_list = [path for path in file_list if path not in set(remove_list)]
-
-    if new_list:
-        Logm('%sAdded %d files to %s' % ('(dryrun) ' if opts.dry_run else '', len(new_list), opts.out_list))
-    if remove_list:
-        Logm('%sRemoved %d files from %s' % ('(dryrun) ' if opts.dry_run else '', len(remove_list), opts.out_list))
-    if not new_list and not remove_list and not opts.update:
+    fileMgr.SearchAndUpdate(project_list)
+    if fileMgr.addCount:
+        Logm('%sAdded %d files to %s' % ('(dryrun) ' if opts.dry_run else '', fileMgr.addCount, opts.out_list))
+    if fileMgr.rmCount:
+        Logm('%sRemoved %d files from %s' % ('(dryrun) ' if opts.dry_run else '', fileMgr.rmCount, opts.out_list))
+    if fileMgr.rmCount == 0 and fileMgr.addCount == 0 and not opts.update:
         Log('Nothing to update.')
         return False
     if opts.dry_run:
         return True
-    SaveFileList(opts, opts.out_list, sorted(itertools.chain(new_list, remain_list)))
+    SaveFileList(opts, opts.out_list, fileMgr.GetFileList())
     return True
 
 def LoadFileList(name):
@@ -278,9 +300,9 @@ def LoadFileList(name):
 def ParseArguments(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('path', nargs='*', default=None,
-                        help = 'add path to project list (%s) and update tag if file list is changed ex. dir/, file.c' % CONFIG['project_list'])
+                        help = 'add path to project list (%s) and generate tag if project list is changed ex. dir/, file.c' % CONFIG['project_list'])
     parser.add_argument('-u', '--update', action='store_true', default=False,
-                        help='update path in project list and generate tag')
+                        help='update list file according to project list and generate tag')
     parser.add_argument('-s', '--suffixes', nargs='+', default=None,
                         help='assign suffixes filter (default: %s)' % CONFIG['suffixes'])
     parser.add_argument('-f', '--force', action='store_true', default=False,
@@ -303,7 +325,7 @@ def ParseArguments(argv):
                         help='assign cmd to generate tag. $out_list will be replaced by list file name. Cmds will be triggered only when a new file is added in $out_list. (default: %s)' % CONFIG['exec_cmds'])
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='show more logs')
-    parser.add_argument('-v', '--version', action='version', version='1.0.2')
+    parser.add_argument('-v', '--version', action='version', version='1.1.0')
 
     opts = SetConfig(parser.parse_args(argv[1:]))
     Logv(opts, opts.verbose)
@@ -320,7 +342,6 @@ def main(argv):
     if not opts.update and not opts.path:
         parser.print_help()
         return 1
-
     if UpdateFileList(opts, GetProjectList(opts, opts.path)):
         return UpdateTag(opts)
     return 0
