@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-import sys, os, subprocess, shutil, time, argparse, re, shlex
+import sys, os, subprocess, shutil, time, argparse, re, shlex, itertools
 
 if hasattr(__builtins__, 'raw_input'):
     input = raw_input
@@ -30,6 +30,7 @@ NONE   = "\x1b[0m"
 
 CONFIG = {
     'config_path': '~/.csmgr.config',
+    'project_list': '.csmgr.project',
     'backup_prefix': '.tmp.',
     'suffixes': '.c .h .js .cpp .py',
     'out_list': 'cscope.files',
@@ -80,6 +81,21 @@ class FakeSection(object):
             yield line
             line = self.f.readline()
 
+def TaskDecorator(start_msg=None, end_msg='[done]'):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if start_msg:
+                Log(start_msg)
+                Log(CONFIG['delim'])
+            start_time = time.time()
+            ret = func(*args, **kwargs)
+            elapsed_time = time.time() - start_time
+            Log("%s (%ss)" % (end_msg, round(elapsed_time, 3)))
+            Log(CONFIG['delim_end'])
+            return ret
+        return wrapper
+    return decorator
+
 def InitConfig(path, silent=True):
     config_file = os.path.expanduser(path)
     if not os.path.isfile(config_file):
@@ -126,10 +142,10 @@ def ShowPath(opts, line, path):
 
 def DeleteMeta(opts):
     if opts.dry_run:
-        Log('[dryrun] Remove %s' % ' '.join(opts.meta_files))
+        Log('(dryrun) Remove %s' % ' '.join(opts.meta_files))
         return 0
-    if os.path.isfile(opts.out_list):
-        BackupFileList(opts)
+    
+    BackupFileList(opts)
     Log('Remove %s' % ' '.join(opts.meta_files))
     for f in opts.meta_files:
         try:
@@ -138,23 +154,21 @@ def DeleteMeta(opts):
             pass
     return 0
 
+@TaskDecorator()
 def Run(opts, cmd):
+    Log('Run %s ...' % cmd)
+    Log(opts.delim)
+
     if not cmd:
         return
     if opts.dry_run:
-        Log('[dryrun] %s' % cmd)
+        Log('(dryrun) %s' % cmd)
         return
-    Log('Run %s ...' % cmd)
-    Log(opts.delim)
-    start_time = time.time()
     try:
         return subprocess.call(tuple(shlex.split(cmd)))
     except Exception as e:
         Loge("Run cmd '%s' fail. (%s)" % (cmd, e))
         return 1
-    finally:
-        elapsed_time = time.time() - start_time
-        Log("done (" + str(round(elapsed_time, 3)) + "s)")
 
 def UpdateTag(opts, regen=False):
     if regen:
@@ -162,11 +176,12 @@ def UpdateTag(opts, regen=False):
     for cmd in opts.exec_cmds:
         cmd = cmd.replace('$out_list', opts.out_list).strip()
         Run(opts, cmd)
-        Log(opts.delim_end)
     return 0
 
 def BackupFileList(opts):
     path = opts.out_list
+    if not os.path.isfile(path):
+        return
     shutil.copy2(path, opts.backup_prefix + path)
 
 def RecoverFileList(opts):
@@ -176,7 +191,7 @@ def RecoverFileList(opts):
 
     if not os.path.isfile(backup):
         Log('No previous version.')
-        return
+        return 1
 
     if not os.path.isfile(cur):
         shutil.copy2(backup, cur)
@@ -185,17 +200,11 @@ def RecoverFileList(opts):
         os.rename(backup, cur)
         os.rename(tmp, backup)
     Logm("Rollback list file ...Done")
+    return 0
 
-def SaveFileList(opts, filelist):
-    if len(filelist) == 0 or opts.dry_run:
-        return
-
-    filename = opts.out_list
-    if os.path.isfile(filename):
-        BackupFileList(opts)
-
-    with open(filename, 'a') as f:
-        for i, path in enumerate(filelist):
+def SaveFileList(opts, filename, filelist):
+    with open(filename, 'w') as f:
+        for path in filelist:
             f.write(path + "\n")
 
 def IsExclude(opts, path):
@@ -210,7 +219,7 @@ def FilterDir(opts, folder, file_list, existed_set):
             if IsExclude(opts, os.path.relpath(path, folder)):
                 continue;
             full_path = os.path.join(path, f)
-            FilterFile(opts, full_path, file_list, existed_set)
+            FilterFile(opts, os.path.relpath(full_path), file_list, existed_set)
 
 def FilterFile(opts, path, file_list, existed_set):
     if not path.endswith(tuple(opts.suffixes)) or os.path.islink(path):
@@ -219,33 +228,74 @@ def FilterFile(opts, path, file_list, existed_set):
         return
     ShowPath(opts, len(file_list), path)
     file_list.append(path)
+    existed_set.add(path)
 
-def AddFileList(opts):
-    Log("Searching file list ...")
-    Log(opts.delim)
-    start_time = time.time()
+def GetProjectPath(path):
+    rel_path = os.path.relpath(path)
+    if rel_path == '.':
+        return './'
+    return rel_path if rel_path[0] == '.' else './' + rel_path
+
+def GetProjectList(opts, add_pathes=None):
+    pathes = LoadFileList(opts.project_list)
+    if not add_pathes:
+        return pathes
+
     for path in opts.path:
         if not os.path.exists(path):
             Loge("'" + path + "' not exited.")
             sys.exit(1)
 
-    existed_set = set(LoadFileList(opts))
+    valid_pathes = set([GetProjectPath(path) for path in opts.path])
+    for path1 in pathes:
+        for path2 in list(valid_pathes):
+            if path2.startswith(path1):
+                Logw('Redundent path %s (in %s)' % (path2, path1))
+                valid_pathes.remove(path2)
+
+    for path in valid_pathes:
+        Log('%sAdded path \'%s\' to project list' % ('(dryrun) ' if opts.dry_run else '', path))
+    if not valid_pathes:
+        Logw('Pathes already exists in project list (%s).' % opts.project_list)
+    if not opts.dry_run:
+        SaveFileList(opts, opts.project_list, sorted(itertools.chain(pathes, valid_pathes)))
+    return valid_pathes
+
+def GetRemoveFileList(opts, pathes):
+    return [path for path in pathes if not os.path.exists(path)]
+
+def GetNewFileList(opts, pathes, existed_set):
     file_list = []
-    for path in opts.path:
+    for path in pathes:
         if os.path.isfile(path):
             FilterFile(opts, path, file_list, existed_set)
         elif os.path.isdir(path):
             FilterDir(opts, path, file_list, existed_set)
-    SaveFileList(opts, file_list)
-    if opts.dry_run:
-        Logm('[dryrun] ', '')
-    elapsed_time = time.time() - start_time
-    Logm('Added %d files (%ss)' % (len(file_list), round(elapsed_time, 3)))
-    Log(opts.delim_end)
     return file_list
 
-def LoadFileList(opts):
-    name = opts.out_list
+@TaskDecorator('Checking file list ...')
+def UpdateFileList(opts, project_list):
+    file_list = LoadFileList(opts.out_list)
+    existed_set = set(file_list)
+
+    new_list = GetNewFileList(opts, project_list, existed_set)
+    remove_list = GetRemoveFileList(opts, file_list)
+    remain_list = [path for path in file_list if path not in set(remove_list)]
+
+    if new_list:
+        Logm('%sAdded %d files to %s' % ('(dryrun) ' if opts.dry_run else '', len(new_list), opts.out_list))
+    if remove_list:
+        Logm('%sRemoved %d files from %s' % ('(dryrun) ' if opts.dry_run else '', len(remove_list), opts.out_list))
+    if not new_list and not remove_list and not opts.update:
+        Log('Nothing to update.')
+        return False
+    if opts.dry_run:
+        return True
+    BackupFileList(opts)
+    SaveFileList(opts, opts.out_list, sorted(itertools.chain(new_list, remain_list)))
+    return True
+
+def LoadFileList(name):
     if not os.path.isfile(name):
         return []
     with open(name, 'r') as f:
@@ -254,17 +304,19 @@ def LoadFileList(opts):
 def ParseArguments(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('path', nargs='*', default=None,
-                        help = 'ex. dir/, file.c')
-    parser.add_argument('-o', '--out-list', type=str,
-                        help='assign the name of ouput list file (default: %s)' % CONFIG['out_list'])
+                        help = 'add path to project list (%s) and update tag if file list is changed ex. dir/, file.c' % CONFIG['project_list'])
+    parser.add_argument('-u', '--update', action='store_true', default=False,
+                        help='update path in project list and generate tag')
+    parser.add_argument('-s', '--suffixes', nargs='+', default=None,
+                        help='assign suffixes filter (default: %s)' % CONFIG['suffixes'])
     parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='delete meta data and generate tag')
     parser.add_argument('-c', '--config-file', type=str,
                         help='assign config file (default: %s)' % CONFIG['config_path'])
     parser.add_argument('-r', '--roll-back', action='store_true', default=False,
                         help='roll back list file to the previous version')
-    parser.add_argument('-s', '--suffixes', nargs='+', default=None,
-                        help='assign suffixes filter (default: %s)' % CONFIG['suffixes'])
+    parser.add_argument('-o', '--out-list', type=str,
+                        help='assign the name of output list file (default: %s)' % CONFIG['out_list'])
     parser.add_argument('-m', '--meta-files', nargs='+', default=None,
                         help='assign meta data files (default: %s)' % CONFIG['meta_files'])
     parser.add_argument('-e', '--exclude-dirs', nargs='+', default=None,
@@ -294,21 +346,14 @@ def main(argv):
     if opts.force:
         return UpdateTag(opts, True)
     if opts.roll_back:
-        RecoverFileList(opts)
-        return
-    if len(opts.path) == 0:
+        return RecoverFileList(opts)
+    if not opts.update and not opts.path:
         parser.print_help()
         return 1
-    Log(opts.delim_end)
 
-    start_time = time.time()
-    ret = 0
-    new_list = AddFileList(opts)
-    if len(new_list):
-        ret = UpdateTag(opts)
-    elapsed_time = time.time() - start_time
-    Logm("Completed (" + str(round(elapsed_time, 3)) + "s)")
-    return ret
+    if UpdateFileList(opts, GetProjectList(opts, opts.path)):
+        return UpdateTag(opts)
+    return 0
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
