@@ -23,8 +23,8 @@ testFile() {
     grep -w test/file1.c cscope.files
     assertEquals 0 $? 
     python csmgr -d
-    rm cscope.files
     checkDelete "cscope.in.out cscope.out cscope.po.out tags"
+    rm .csmgr.project
 }
 
 testForce() {
@@ -33,7 +33,7 @@ testForce() {
     python csmgr -f
     assertEquals 0 $? 
     python csmgr -d
-    rm cscope.files
+    rm .csmgr.project
 }
 
 testDir() {
@@ -44,7 +44,7 @@ testDir() {
     grep -w test/dir/dir_file2.c cscope.files
     assertEquals 0 $? 
     python csmgr -d
-    rm cscope.files
+    rm .csmgr.project
 }
 
 testSuffix() {
@@ -57,7 +57,7 @@ testSuffix() {
     grep -w test/file2.cpp cscope.files
     assertEquals 0 $? 
     python csmgr -d
-    rm cscope.files
+    rm .csmgr.project
 }
 
 testList() {
@@ -65,24 +65,24 @@ testList() {
     assertEquals 0 $? 
     grep -w test/file1.c src.map
     python csmgr -d
-    rm src.map
+    rm .csmgr.project
 }
 
 testMeta() {
     python csmgr . 
     assertEquals 0 $? 
-    python csmgr -d -m cscope.files cscope.in.out cscope.out cscope.po.out tags 
-    checkDelete "cscope.files cscope.in.out cscope.out cscope.po.out tags"
+    python csmgr -d -m cscope.files cscope.in.out cscope.out cscope.po.out tags .csmgr.project
+    checkDelete "cscope.in.out cscope.out cscope.po.out tags .csmgr.project"
 }
 
 testCmd() {
-    python csmgr test/file1.c -x 'echo "test/dir/dir_file1.c"' 'echo "test/dir/dir_file2.c"' > cscope.files
-    grep -w test/dir/dir_file1.c cscope.files
+    python csmgr test/file1.c -x 'echo "test/dir/dir_file1.c"' 'echo "test/dir/dir_file2.c"' > cmd.out
+    grep -w test/dir/dir_file1.c cmd.out
     assertEquals 0 $? 
-    grep -w test/dir/dir_file2.c cscope.files
+    grep -w test/dir/dir_file2.c cmd.out
     assertEquals 0 $? 
     python csmgr -d
-    rm cscope.files
+    rm .csmgr.project
 }
 
 CONFIG_FILE='test/.csmgr.config'
@@ -94,7 +94,7 @@ testExclude() {
     grep -w test/dir/dir_file2.c cscope.files
     assertNotEquals 0 $? 
     python csmgr -c $CONFIG_FILE -d
-    rm cscope.files
+    rm .csmgr.project
 }
 
 testSuffix2() {
@@ -107,7 +107,7 @@ testSuffix2() {
     grep -w test/file2.cpp map.files
     assertEquals 0 $? 
     python csmgr -c $CONFIG_FILE -d
-    rm map.files
+    rm .csmgr.project
 }
 
 testExclude2() {
@@ -117,7 +117,6 @@ testExclude2() {
     grep -w test/dir/dir_file2.c map.files
     assertNotEquals 0 $? 
     python csmgr -c $CONFIG_FILE -d
-    rm map.files
+    rm .csmgr.project
 }
 
-gg
