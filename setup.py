@@ -10,7 +10,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='cscope-manager',
-     version='1.0.2',
+     version='1.1.0',
      scripts=['csmgr'] ,
      author="Rick Chang",
      author_email="chchang915@gmail.com",

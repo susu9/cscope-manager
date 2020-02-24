@@ -260,7 +260,7 @@ def GetProjectList(opts, add_pathes=None):
     for path1 in pathes:
         for path2 in list(valid_pathes):
             if path2.startswith(path1):
-                Logw('Redundent path %s (in %s)' % (path2, path1))
+                Logw('Redundent path %s (under %s)' % (path2, path1))
                 valid_pathes.remove(path2)
 
     for path in valid_pathes:
