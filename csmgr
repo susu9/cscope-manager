@@ -145,7 +145,6 @@ def DeleteMeta(opts):
         Log('(dryrun) Remove %s' % ' '.join(opts.meta_files))
         return 0
     
-    BackupFileList(opts)
     Log('Remove %s' % ' '.join(opts.meta_files))
     for f in opts.meta_files:
         try:
@@ -176,30 +175,6 @@ def UpdateTag(opts, regen=False):
     for cmd in opts.exec_cmds:
         cmd = cmd.replace('$out_list', opts.out_list).strip()
         Run(opts, cmd)
-    return 0
-
-def BackupFileList(opts):
-    path = opts.out_list
-    if not os.path.isfile(path):
-        return
-    shutil.copy2(path, opts.backup_prefix + path)
-
-def RecoverFileList(opts):
-    cur = opts.out_list
-    backup = opts.backup_prefix + cur
-    tmp = backup + ".tmp"
-
-    if not os.path.isfile(backup):
-        Log('No previous version.')
-        return 1
-
-    if not os.path.isfile(cur):
-        shutil.copy2(backup, cur)
-    else:
-        os.rename(cur, tmp)
-        os.rename(backup, cur)
-        os.rename(tmp, backup)
-    Logm("Rollback list file ...Done")
     return 0
 
 def SaveFileList(opts, filename, filelist):
@@ -291,7 +266,6 @@ def UpdateFileList(opts, project_list):
         return False
     if opts.dry_run:
         return True
-    BackupFileList(opts)
     SaveFileList(opts, opts.out_list, sorted(itertools.chain(new_list, remain_list)))
     return True
 
@@ -313,8 +287,6 @@ def ParseArguments(argv):
                         help='delete meta data and generate tag')
     parser.add_argument('-c', '--config-file', type=str,
                         help='assign config file (default: %s)' % CONFIG['config_path'])
-    parser.add_argument('-r', '--roll-back', action='store_true', default=False,
-                        help='roll back list file to the previous version')
     parser.add_argument('-o', '--out-list', type=str,
                         help='assign the name of output list file (default: %s)' % CONFIG['out_list'])
     parser.add_argument('-m', '--meta-files', nargs='+', default=None,
@@ -345,8 +317,6 @@ def main(argv):
         return DeleteMeta(opts)
     if opts.force:
         return UpdateTag(opts, True)
-    if opts.roll_back:
-        return RecoverFileList(opts)
     if not opts.update and not opts.path:
         parser.print_help()
         return 1
