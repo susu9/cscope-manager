@@ -11,7 +11,7 @@ A tool helps you manage cscope/ctags tags
 pip install cscope-manager
 ```
 
-## Screenshot
+# Screenshot
 
 ![example](https://github.com/susu9/cscope-manager/blob/master/screenshot-1.png)
 
@@ -31,27 +31,41 @@ delim     = ........................................
 delim_end = ****************************************
 ```
 
-## Features
-1. Add files to project list (tracking list)
+# Features
+1. Manage source code by a project list (.csmgr.project)
+2. Generate file list (i.e. cscope.files) by the project list.
+3. Remove duplicate file pathes
+4. Remove symbolic link
+5. Remove not existed files
+6. Run commands for tag generation
+
+# Example
+1. Add files to project list
 ```shell
 csmgr a.c b.c
 ```
-2. Add folders to project list (tracking list)
+2. Add folders to project list
 ```shell
 csmgr dir1/ dir2/
 ```
-3. Generate cscope.files by project list
+3. Update file list
 ```shell
 # add current directory to project list
 csmgr .
 # files layout have been changed under ./
+mv dir1 dir2
+# update file list
 csmgr -u
-# cscope.files is updated
 ```
-4. Remove duplicate file pathes
-5. Remove symbolic link
+4. Edit project list
+```shell
+# Method I
+csmgr [path]
+# Method II
+vim .csmgr.project
+```
 
-## Usage
+# Usage
 ```
 Use config file: /Users/rickchang/.csmgr.config
 usage: csmgr [-h] [-u] [-s SUFFIXES [SUFFIXES ...]] [-f] [-c CONFIG_FILE]
