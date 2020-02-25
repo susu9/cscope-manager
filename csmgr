@@ -150,6 +150,7 @@ class FileListMgr:
 def TaskDecorator(start_msg=None, end_msg='[done]'):
     def decorator(func):
         def wrapper(*args, **kwargs):
+            Log(CONFIG['delim_end'])
             if start_msg:
                 Log(start_msg)
                 Log(CONFIG['delim'])
@@ -157,7 +158,6 @@ def TaskDecorator(start_msg=None, end_msg='[done]'):
             ret = func(*args, **kwargs)
             elapsed_time = time.time() - start_time
             Log("%s (%ss)" % (end_msg, round(elapsed_time, 3)))
-            Log(CONFIG['delim_end'])
             return ret
         return wrapper
     return decorator
@@ -246,9 +246,11 @@ def GetProjectPath(path):
         return './'
     return rel_path if rel_path[0] == '.' else './' + rel_path
 
-def GetProjectList(opts, add_pathes=None):
+def GetProjectList(opts):
+    if not os.path.isfile(opts.project_list):
+        Logw("Can't find project list (%s)" % opts.project_list)
     pathes = LoadFileList(opts.project_list)
-    if not add_pathes:
+    if opts.update:
         return pathes
 
     for path in opts.path:
@@ -286,10 +288,12 @@ def UpdateFileList(opts, project_list):
     if fileMgr.rmCount == 0 and fileMgr.addCount == 0 and not opts.update:
         Log('Nothing to update.')
         return False
-    if opts.dry_run:
-        return True
-    SaveFileList(opts, opts.out_list, fileMgr.GetFileList())
-    return True
+    file_list = fileMgr.GetFileList()
+    if not file_list:
+        Logw('Can\'t find any file')
+    if not opts.dry_run:
+        SaveFileList(opts, opts.out_list, file_list)
+    return file_list
 
 def LoadFileList(name):
     if not os.path.isfile(name):
@@ -339,10 +343,10 @@ def main(argv):
         return DeleteMeta(opts)
     if opts.force:
         return UpdateTag(opts, True)
-    if not opts.update and not opts.path:
+    if not bool(opts.update) ^ bool(opts.path):
         parser.print_help()
         return 1
-    if UpdateFileList(opts, GetProjectList(opts, opts.path)):
+    if UpdateFileList(opts, GetProjectList(opts)):
         return UpdateTag(opts)
     return 0
 
