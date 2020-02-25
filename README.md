@@ -11,10 +11,6 @@ A tool helps you manage cscope/ctags tags
 pip install cscope-manager
 ```
 
-# Screenshot
-
-![example](https://github.com/susu9/cscope-manager/blob/master/screenshot-1.png)
-
 # Custimization
 You can create a config file in ~/.csmgr.config to customize your preference
 ```
@@ -64,6 +60,10 @@ csmgr [path]
 # Method II
 vim .csmgr.project
 ```
+
+# Screenshot
+
+![example](https://github.com/susu9/cscope-manager/blob/master/screenshot-1.png)
 
 # Usage
 ```
