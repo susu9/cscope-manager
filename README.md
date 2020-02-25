@@ -55,9 +55,9 @@ csmgr -u
 ```
 4. Edit project list
 ```shell
-# Method I
+# Method I: Add path to project list by script (script will check redundant path)
 csmgr [path]
-# Method II
+# Method II: edit project list by editor
 vim .csmgr.project
 ```
 
