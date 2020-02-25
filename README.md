@@ -36,15 +36,7 @@ delim_end = ****************************************
 6. Run commands for tag generation
 
 # Example
-1. Add files to project list
-```shell
-csmgr a.c b.c
-```
-2. Add folders to project list
-```shell
-csmgr dir1/ dir2/
-```
-3. Update file list
+General case for small project
 ```shell
 # add current directory to project list
 csmgr .
@@ -53,7 +45,7 @@ mv dir1 dir2
 # update file list
 csmgr -u
 ```
-4. Edit project list
+Edit project list
 ```shell
 # Method I: Add path to project list by script (script will check redundant path)
 csmgr [path]
