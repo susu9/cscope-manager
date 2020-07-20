@@ -31,7 +31,7 @@ NONE   = "\x1b[0m"
 CONFIG = {
     'config_path': '~/.csmgr.config',
     'project_list': '.csmgr.project',
-    'suffixes': '.c .h .js .cpp .py',
+    'suffixes': '.c .h .js .cpp .py .scss .css .java',
     'out_list': 'cscope.files',
     'meta_files': 'cscope.in.out cscope.out cscope.po.out tags',
     'exclude_dirs': '.git node_modules',
@@ -306,13 +306,13 @@ def LoadFileList(name):
 def ParseArguments(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('path', nargs='*', default=None,
-                        help = 'add path to project list (%s) and generate tag if project list is changed ex. dir/, file.c' % CONFIG['project_list'])
+                        help = 'add path to project list (%s) and run commands for tag generation if %s is changed ex. dir/, file.c' % (CONFIG['project_list'], CONFIG['out_list']))
     parser.add_argument('-u', '--update', action='store_true', default=False,
-                        help='update list file according to project list and generate tag')
+                        help='Update %s if necessary and run commands for tag generation' % CONFIG['out_list'])
+    parser.add_argument('-f', '--force', action='store_true', default=False,
+                        help='delete meta data and run commands for tag generation')
     parser.add_argument('-s', '--suffixes', nargs='+', default=None,
                         help='assign suffixes filter (default: %s)' % CONFIG['suffixes'])
-    parser.add_argument('-f', '--force', action='store_true', default=False,
-                        help='delete meta data and generate tag')
     parser.add_argument('-c', '--config-file', type=str,
                         help='assign config file (default: %s)' % CONFIG['config_path'])
     parser.add_argument('-o', '--out-list', type=str,
@@ -328,7 +328,7 @@ def ParseArguments(argv):
     parser.add_argument('--max-display', type=int,
                         help='assign how many paths will be shown in the log')
     parser.add_argument('-x', '--exec-cmds', nargs='+', default=None,
-                        help='assign cmd to generate tag. $out_list will be replaced by list file name. Cmds will be triggered only when a new file is added in $out_list. (default: %s)' % CONFIG['exec_cmds'])
+                        help='assign commands for tag generation. $out_list will be replaced by list file name (check -o for details). (default: %s)' % CONFIG['exec_cmds'])
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='show more logs')
     parser.add_argument('-v', '--version', action='version', version='1.1.1')

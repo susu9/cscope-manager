@@ -15,7 +15,7 @@ pip install cscope-manager
 You can create a config file in ~/.csmgr.config to customize your preference
 ```
 # Supported configurations and format
-project_list: .csmgr.project
+project_list = .csmgr.project
 suffixes = .cpp
 out_list = map.files
 meta_files = cscope.in.out cscope.out cscope.po.out tags
@@ -28,12 +28,11 @@ delim_end = ****************************************
 ```
 
 # Features
-1. Manage source code by a project list (.csmgr.project)
-2. Generate file list (i.e. cscope.files) by the project list.
-3. Remove duplicate file pathes
-4. Remove symbolic link
-5. Remove not existed files
-6. Run commands for tag generation
+1. Generate file list (cscope.files) for cscope/ctags through a customize project list (.csmgr.project)
+2. Remove duplicate file pathes in cscope.files
+3. Remove symbolic link in cscope.files
+4. Remove not existed files in cscope.files
+5. Check redudant path in project list
 
 # Example
 General case for small project
@@ -58,9 +57,7 @@ vim .csmgr.project
 ![example](https://github.com/susu9/cscope-manager/blob/master/screenshot-1.png)
 
 # Usage
-```
-Use config file: /Users/rickchang/.csmgr.config
-usage: csmgr [-h] [-u] [-s SUFFIXES [SUFFIXES ...]] [-f] [-c CONFIG_FILE]
+usage: csmgr [-h] [-u] [-f] [-s SUFFIXES [SUFFIXES ...]] [-c CONFIG_FILE]
              [-o OUT_LIST] [-m META_FILES [META_FILES ...]]
              [-e EXCLUDE_DIRS [EXCLUDE_DIRS ...]] [-d] [--dry-run]
              [--max-display MAX_DISPLAY] [-x EXEC_CMDS [EXEC_CMDS ...]]
@@ -68,17 +65,18 @@ usage: csmgr [-h] [-u] [-s SUFFIXES [SUFFIXES ...]] [-f] [-c CONFIG_FILE]
              [path [path ...]]
 
 positional arguments:
-  path                  add path to project list (.csmgr.project) and generate
-                        tag if project list is changed ex. dir/, file.c
+  path                  add path to project list (.csmgr.project) and run
+                        commands for tag generation if cscope.files is changed
+                        ex. dir/, file.c
 
 optional arguments:
   -h, --help            show this help message and exit
-  -u, --update          update list file according to project list and
-                        generate tag
+  -u, --update          Update cscope.files if necessary and run commands for
+                        tag generation
+  -f, --force           delete meta data and run commands for tag generation
   -s SUFFIXES [SUFFIXES ...], --suffixes SUFFIXES [SUFFIXES ...]
                         assign suffixes filter (default: .c .h .js .cpp .py
-                        .scss)
-  -f, --force           delete meta data and generate tag
+                        .scss .css .java)
   -c CONFIG_FILE, --config-file CONFIG_FILE
                         assign config file (default: ~/.csmgr.config)
   -o OUT_LIST, --out-list OUT_LIST
@@ -94,10 +92,10 @@ optional arguments:
   --max-display MAX_DISPLAY
                         assign how many paths will be shown in the log
   -x EXEC_CMDS [EXEC_CMDS ...], --exec-cmds EXEC_CMDS [EXEC_CMDS ...]
-                        assign cmd to generate tag. $out_list will be replaced
-                        by list file name. Cmds will be triggered only when a
-                        new file is added in $out_list. (default: cscope -bqk
-                        -i $out_list && ctags -L $out_list)
+                        assign commands for tag generation. $out_list will be
+                        replaced by list file name (check -o for details).
+                        (default: cscope -bqk -i $out_list && ctags -L
+                        $out_list)
   --verbose             show more logs
   -v, --version         show program's version number and exit
-```
+
