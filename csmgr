@@ -34,7 +34,7 @@ CONFIG = {
     'suffixes': '.c .h .js .cpp .py',
     'out_list': 'cscope.files',
     'meta_files': 'cscope.in.out cscope.out cscope.po.out tags',
-    'exclude_dirs': '.git node_modules', 
+    'exclude_dirs': '.git node_modules',
     'exec_cmds': 'cscope -bqk -i $out_list && ctags -L $out_list',
     'max_display': 20,
     'delim': "-" * 80,
@@ -261,6 +261,8 @@ def GetProjectList(opts):
     valid_pathes = set([GetProjectPath(path) for path in opts.path])
     for path1 in pathes:
         for path2 in list(valid_pathes):
+            if os.path.isfile(path2):
+                continue
             if path2.startswith(path1):
                 Logw('Redundent path %s (under %s)' % (path2, path1))
                 valid_pathes.remove(path2)
