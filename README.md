@@ -6,12 +6,14 @@
 # cscope-manager
 A tool helps you manage cscope/ctags tags
 
-# Installation
+![cscope-manager-demo-optimize](https://user-images.githubusercontent.com/6793352/90322843-1f8b9900-df0e-11ea-9153-be870f22d25a.gif)
+
+## Installation
 ```shell
 pip install cscope-manager
 ```
 
-# Custimization
+## Custimization
 You can create a config file in ~/.csmgr.config to customize your preference
 ```
 # Supported configurations and format
@@ -27,36 +29,15 @@ delim     = ........................................
 delim_end = ****************************************
 ```
 
-# Features
+## Features
 1. Generate file list (cscope.files) for cscope/ctags through a customize project list (.csmgr.project)
 2. Remove duplicate file pathes in cscope.files
 3. Remove symbolic link in cscope.files
 4. Remove not existed files in cscope.files
 5. Check redudant path in project list
 
-# Example
-General case for small project
-```shell
-# add current directory to project list
-csmgr .
-# files layout have been changed under ./
-mv dir1 dir2
-# update file list
-csmgr -u
+## Usage
 ```
-Edit project list
-```shell
-# Method I: Add path to project list by script (script will check redundant path)
-csmgr [path]
-# Method II: edit project list by editor
-vim .csmgr.project
-```
-
-# Screenshot
-
-![example](https://github.com/susu9/cscope-manager/blob/master/screenshot-1.png)
-
-# Usage
 usage: csmgr [-h] [-u] [-f] [-s SUFFIXES [SUFFIXES ...]] [-c CONFIG_FILE]
              [-o OUT_LIST] [-m META_FILES [META_FILES ...]]
              [-e EXCLUDE_DIRS [EXCLUDE_DIRS ...]] [-d] [--dry-run]
@@ -98,4 +79,4 @@ optional arguments:
                         $out_list)
   --verbose             show more logs
   -v, --version         show program's version number and exit
-
+```
