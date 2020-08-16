@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 #
 # Copyright 2018 Rick Chang <chchang915@gmail.com>
 # 
@@ -16,12 +16,10 @@
 from __future__ import print_function
 import sys, os, subprocess, shutil, time, argparse, re, shlex, itertools, collections
 
-if hasattr(__builtins__, 'raw_input'):
-    input = raw_input
 try:
-    import configparser as ConfigParser
+    from configparser import ConfigParser
 except ImportError:
-    import ConfigParser
+    from ConfigParser import SafeConfigParser as ConfigParser
 
 RED    = "\x1b[31m"
 GREEN  = "\x1b[32m"
@@ -162,6 +160,12 @@ def TaskDecorator(start_msg=None, end_msg='[done]'):
         return wrapper
     return decorator
 
+def ReadConfig(config, fp):
+    if hasattr(config, 'read_file'):
+        config.read_file(fp)
+    else:
+        config.readfp(fp)
+
 def InitConfig(path, silent=True):
     config_file = os.path.expanduser(path)
     if not os.path.isfile(config_file):
@@ -170,8 +174,8 @@ def InitConfig(path, silent=True):
         return False
 
     Log("Use config file: %s" % config_file)
-    config = ConfigParser.SafeConfigParser()
-    config.readfp(FakeSection(open(config_file), FakeSection.SECTION))
+    config = ConfigParser()
+    ReadConfig(config, FakeSection(open(config_file), FakeSection.SECTION))
 
     for key in CONFIG:
         if not config.has_option(FakeSection.SECTION, key):
