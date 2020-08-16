@@ -6,7 +6,7 @@
 # cscope-manager
 A tool helps you manage cscope/ctags tags
 
-![cscope-manager-demo-optimize](https://user-images.githubusercontent.com/6793352/90322843-1f8b9900-df0e-11ea-9153-be870f22d25a.gif)
+![cscope-manager-demo-small](https://user-images.githubusercontent.com/6793352/90326615-40b8ad80-df3f-11ea-959d-2012d688e22a.gif)
 
 ## Installation
 ```shell
