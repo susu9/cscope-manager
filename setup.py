@@ -10,7 +10,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='cscope-manager',
-     version='1.1.1',
+     version='1.1.2',
      scripts=['csmgr'] ,
      author="Rick Chang",
      author_email="chchang915@gmail.com",
@@ -27,6 +27,7 @@ setuptools.setup(
          "Programming Language :: Python :: 3.5",
          "Programming Language :: Python :: 3.6",
          "Programming Language :: Python :: 3.7",
+         "Programming Language :: Python :: 3.8",
          "License :: OSI Approved :: Apache Software License",
          "Operating System :: OS Independent",
      ],
