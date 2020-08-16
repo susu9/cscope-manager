@@ -335,7 +335,7 @@ def ParseArguments(argv):
                         help='assign commands for tag generation. $out_list will be replaced by list file name (check -o for details). (default: %s)' % CONFIG['exec_cmds'])
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='show more logs')
-    parser.add_argument('-v', '--version', action='version', version='1.1.1')
+    parser.add_argument('-v', '--version', action='version', version='1.1.2')
 
     opts = SetConfig(parser.parse_args(argv[1:]))
     Logv(opts, opts.verbose)
