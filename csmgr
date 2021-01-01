@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 #
 # Copyright 2018 Rick Chang <chchang915@gmail.com>
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,6 +29,7 @@ NONE   = "\x1b[0m"
 CONFIG = {
     'config_path': '~/.csmgr.config',
     'project_list': '.csmgr.project',
+    'include_files': '',
     'suffixes': '.c .h .js .cpp .py .scss .css .java',
     'out_list': 'cscope.files',
     'meta_files': 'cscope.in.out cscope.out cscope.po.out tags',
@@ -79,17 +80,15 @@ class FakeSection(object):
             line = self.f.readline()
 
 class FileListMgr:
-    def __init__(self, init_list, exclude_dirs, max_display, suffixes):
+    def __init__(self, init_list, opts):
         self.list_count = collections.Counter(init_list)
-        self.exclude_dirs = exclude_dirs
-        self.max_display = max_display
-        self.suffixes = suffixes
+        self.opts = opts
         self.addCount = 0
         self.rmCount = 0
         self.showCount = 0
 
     def IsExclude(self, path):
-        for exclude_dir in self.exclude_dirs:
+        for exclude_dir in self.opts.exclude_dirs:
             if path.startswith(exclude_dir):
                 return True
         return False
@@ -106,7 +105,7 @@ class FileListMgr:
             if val == 1:
                 self.Show('Remove %s' % key)
                 self.rmCount += 1
- 
+
     def GetFileList(self):
         cur_list = []
         for key, val in self.list_count.items():
@@ -115,16 +114,16 @@ class FileListMgr:
         return sorted(cur_list)
 
     def Show(self, s):
-        if self.showCount > self.max_display:
+        if self.showCount > self.opts.max_display:
             return
-        Log('%s' % '...' if self.showCount == self.max_display else s)
+        Log('%s' % '...' if self.showCount == self.opts.max_display else s)
         self.showCount += 1
 
     def FilterFile(self, path, suffixCheck=True):
         if os.path.islink(path):
             return
 
-        if suffixCheck and not path.endswith(tuple(self.suffixes)):
+        if suffixCheck and not path.endswith(tuple(self.opts.suffixes)):
             return
 
         list_count = self.list_count
@@ -143,7 +142,7 @@ class FileListMgr:
                 if self.IsExclude(os.path.relpath(path, folder)):
                     continue;
                 full_path = os.path.join(path, f)
-                self.FilterFile(os.path.relpath(full_path))
+                self.FilterFile(os.path.relpath(full_path), f not in self.opts.include_files)
 
 def TaskDecorator(start_msg=None, end_msg='[done]'):
     def decorator(func):
@@ -191,7 +190,7 @@ def SetConfig(opts):
     for key, val in CONFIG.items():
         if key in config and config[key] is not None:
             continue
-        if key in ['suffixes', 'meta_files', 'exclude_dirs']:
+        if key in ['include_files', 'suffixes', 'meta_files', 'exclude_dirs']:
             val = re.split('\s+', val)
         elif key in ['max_display']:
             val = int(val)
@@ -206,7 +205,7 @@ def DeleteMeta(opts):
     if opts.dry_run:
         Log('(dryrun) Remove %s' % ' '.join(opts.meta_files))
         return 0
-    
+
     Log('Remove %s' % ' '.join(opts.meta_files))
     for f in opts.meta_files:
         try:
@@ -284,7 +283,7 @@ def GetProjectList(opts):
 
 @TaskDecorator('Checking file list ...')
 def UpdateFileList(opts, project_list):
-    fileMgr = FileListMgr(LoadFileList(opts.out_list), opts.exclude_dirs, opts.max_display, opts.suffixes)
+    fileMgr = FileListMgr(LoadFileList(opts.out_list), opts)
 
     fileMgr.SearchAndUpdate(project_list)
     if fileMgr.addCount:
@@ -317,6 +316,8 @@ def ParseArguments(argv):
                         help='delete meta data and run commands for tag generation')
     parser.add_argument('-s', '--suffixes', nargs='+', default=None,
                         help='assign suffixes filter (default: %s)' % CONFIG['suffixes'])
+    parser.add_argument('-i', '--include-files', nargs='+', default=None,
+                        help='assign include files (default: %s)' % CONFIG['include_files'])
     parser.add_argument('-c', '--config-file', type=str,
                         help='assign config file (default: %s)' % CONFIG['config_path'])
     parser.add_argument('-o', '--out-list', type=str,
@@ -358,4 +359,3 @@ def main(argv):
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
-
