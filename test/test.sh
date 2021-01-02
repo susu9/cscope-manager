@@ -48,7 +48,7 @@ testDir() {
 }
 
 testSuffix() {
-    python csmgr . -s .cpp
+    python csmgr -s .cpp .
     assertEquals 0 $?
     grep -w test/dir/dir_file1.c cscope.files
     assertNotEquals 0 $?
@@ -71,12 +71,12 @@ testList() {
 testMeta() {
     python csmgr .
     assertEquals 0 $?
-    python csmgr -d -m cscope.files cscope.in.out cscope.out cscope.po.out tags .csmgr.project
+    python csmgr -d -m 'cscope.files cscope.in.out cscope.out cscope.po.out tags .csmgr.project'
     checkDelete "cscope.in.out cscope.out cscope.po.out tags .csmgr.project"
 }
 
 testCmd() {
-    python csmgr test/file1.c -x 'echo "test/dir/dir_file1.c"' 'echo "test/dir/dir_file2.c"' > cmd.out
+    python csmgr test/file1.c -x 'echo test/dir/dir_file1.c && echo test/dir/dir_file2.c' > cmd.out
     grep -w test/dir/dir_file1.c cmd.out
     assertEquals 0 $?
     grep -w test/dir/dir_file2.c cmd.out
@@ -88,7 +88,7 @@ testCmd() {
 CONFIG_FILE='test/.csmgr.config'
 
 testExclude() {
-    python csmgr -c $CONFIG_FILE  test -e dir/
+    python csmgr -c $CONFIG_FILE test -e dir/
     grep -w test/dir/dir_file1.c cscope.files
     assertNotEquals 0 $?
     grep -w test/dir/dir_file2.c cscope.files
@@ -107,7 +107,7 @@ testSuffix2() {
     grep -w test/file2.cpp map.files
     assertEquals 0 $?
     python csmgr -c $CONFIG_FILE -d
-    rm .csmgr.project
+    rm .csmgr.project map.files
 }
 
 testExclude2() {
@@ -117,13 +117,13 @@ testExclude2() {
     grep -w test/dir/dir_file2.c map.files
     assertNotEquals 0 $?
     python csmgr -c $CONFIG_FILE -d
-    rm .csmgr.project
+    rm .csmgr.project map.files
 }
 
-CONFIG_FILE='test/.csmgr.include.config'
+CONFIG_FILE_INCLUDE='test/.csmgr.include.config'
 
 testInculude1() {
-    python csmgr -c $CONFIG_FILE test
+    python csmgr -c $CONFIG_FILE_INCLUDE test
     grep -w TARGETS cscope.files
     assertEquals 0 $?
     grep -w Makefile cscope.files
@@ -133,7 +133,7 @@ testInculude1() {
 }
 
 testInculude2() {
-    python csmgr test -i TARGETS Makefile
+    python csmgr -i 'TARGETS Makefile' test
     grep -w TARGETS cscope.files
     assertEquals 0 $?
     grep -w Makefile cscope.files

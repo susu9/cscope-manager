@@ -194,10 +194,9 @@ def SetConfig(opts):
             val = re.split('\s+', val)
         elif key in ['max_display']:
             val = int(val)
-        elif key in ['exec_cmds']:
-            val = val.split('&&')
         config[key] = val
 
+    config['exec_cmds'] = config['exec_cmds'].split('&&');
     config['exclude_dirs'] = list(map(lambda x: x.rstrip('/'), config['exclude_dirs']))
     return opts
 
@@ -306,6 +305,10 @@ def LoadFileList(name):
     with open(name, 'r') as f:
         return f.read().splitlines()
 
+class StrAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, re.split('\s+', values))
+
 def ParseArguments(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('path', nargs='*', default=None,
@@ -314,17 +317,17 @@ def ParseArguments(argv):
                         help='Update %s if necessary and run commands for tag generation' % CONFIG['out_list'])
     parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='delete meta data and run commands for tag generation')
-    parser.add_argument('-s', '--suffixes', nargs='+', default=None,
+    parser.add_argument('-s', '--suffixes', action=StrAction, type=str, default=None,
                         help='assign suffixes filter (default: %s)' % CONFIG['suffixes'])
-    parser.add_argument('-i', '--include-files', nargs='+', default=None,
+    parser.add_argument('-i', '--include-files', action=StrAction, type=str, default=None,
                         help='assign include files (default: %s)' % CONFIG['include_files'])
     parser.add_argument('-c', '--config-file', type=str,
                         help='assign config file (default: %s)' % CONFIG['config_path'])
     parser.add_argument('-o', '--out-list', type=str,
                         help='assign the name of output list file (default: %s)' % CONFIG['out_list'])
-    parser.add_argument('-m', '--meta-files', nargs='+', default=None,
+    parser.add_argument('-m', '--meta-files', action=StrAction, type=str, default=None,
                         help='assign meta data files (default: %s)' % CONFIG['meta_files'])
-    parser.add_argument('-e', '--exclude-dirs', nargs='+', default=None,
+    parser.add_argument('-e', '--exclude-dirs', action=StrAction, type=str, default=None,
                         help='assign exclude dirs (default: %s)' % CONFIG['exclude_dirs'])
     parser.add_argument('-d', '--delete-meta', action='store_true', default=False,
                         help='delete all meta data')
@@ -332,8 +335,8 @@ def ParseArguments(argv):
                         help='show what would be done')
     parser.add_argument('--max-display', type=int,
                         help='assign how many paths will be shown in the log')
-    parser.add_argument('-x', '--exec-cmds', nargs='+', default=None,
-                        help='assign commands for tag generation. $out_list will be replaced by list file name (check -o for details). (default: %s)' % CONFIG['exec_cmds'])
+    parser.add_argument('-x', '--exec-cmds', type=str, default=None,
+                        help='assign commands for tag generation. $out_list will be replaced by list file name (check -o for details). Use && concat multiple commands (default: %s)' % CONFIG['exec_cmds'])
     parser.add_argument('--verbose', action='store_true', default=False,
                         help='show more logs')
     parser.add_argument('-v', '--version', action='version', version='1.1.2')

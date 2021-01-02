@@ -38,11 +38,9 @@ delim_end = ****************************************
 
 ## Usage
 ```
-usage: csmgr [-h] [-u] [-f] [-s SUFFIXES [SUFFIXES ...]] [-c CONFIG_FILE]
-             [-o OUT_LIST] [-m META_FILES [META_FILES ...]]
-             [-e EXCLUDE_DIRS [EXCLUDE_DIRS ...]] [-d] [--dry-run]
-             [--max-display MAX_DISPLAY] [-x EXEC_CMDS [EXEC_CMDS ...]]
-             [--verbose] [-v]
+usage: csmgr [-h] [-u] [-f] [-s SUFFIXES] [-i INCLUDE_FILES] [-c CONFIG_FILE]
+             [-o OUT_LIST] [-m META_FILES] [-e EXCLUDE_DIRS] [-d] [--dry-run]
+             [--max-display MAX_DISPLAY] [-x EXEC_CMDS] [--verbose] [-v]
              [path [path ...]]
 
 positional arguments:
@@ -55,28 +53,30 @@ optional arguments:
   -u, --update          Update cscope.files if necessary and run commands for
                         tag generation
   -f, --force           delete meta data and run commands for tag generation
-  -s SUFFIXES [SUFFIXES ...], --suffixes SUFFIXES [SUFFIXES ...]
+  -s SUFFIXES, --suffixes SUFFIXES
                         assign suffixes filter (default: .c .h .js .cpp .py
                         .scss .css .java)
+  -i INCLUDE_FILES, --include-files INCLUDE_FILES
+                        assign include files (default: )
   -c CONFIG_FILE, --config-file CONFIG_FILE
                         assign config file (default: ~/.csmgr.config)
   -o OUT_LIST, --out-list OUT_LIST
                         assign the name of output list file (default:
                         cscope.files)
-  -m META_FILES [META_FILES ...], --meta-files META_FILES [META_FILES ...]
+  -m META_FILES, --meta-files META_FILES
                         assign meta data files (default: cscope.in.out
                         cscope.out cscope.po.out tags)
-  -e EXCLUDE_DIRS [EXCLUDE_DIRS ...], --exclude-dirs EXCLUDE_DIRS [EXCLUDE_DIRS ...]
+  -e EXCLUDE_DIRS, --exclude-dirs EXCLUDE_DIRS
                         assign exclude dirs (default: .git node_modules)
   -d, --delete-meta     delete all meta data
   --dry-run             show what would be done
   --max-display MAX_DISPLAY
                         assign how many paths will be shown in the log
-  -x EXEC_CMDS [EXEC_CMDS ...], --exec-cmds EXEC_CMDS [EXEC_CMDS ...]
+  -x EXEC_CMDS, --exec-cmds EXEC_CMDS
                         assign commands for tag generation. $out_list will be
-                        replaced by list file name (check -o for details).
-                        (default: cscope -bqk -i $out_list && ctags -L
-                        $out_list)
+                        replaced by list file name (check -o for details). Use
+                        && concat multiple commands (default: cscope -bqk -i
+                        $out_list && ctags -L $out_list)
   --verbose             show more logs
   -v, --version         show program's version number and exit
 ```
