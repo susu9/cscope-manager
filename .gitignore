@@ -1,7 +1,4 @@
-.*
-!.csmgr.config
-!.travis.yml
-!.gitignore
+.csmgr.project
 cscope.files
 cscope.in.out
 cscope.out
