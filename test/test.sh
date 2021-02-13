@@ -141,3 +141,10 @@ testInculude2() {
     python csmgr -d
     rm .csmgr.project
 }
+
+testProjectList() {
+    python csmgr -p custom_project_list
+    grep -w custom_project_list .csmgr.config
+    assertEquals 0 $?
+    rm .csmgr.config
+}

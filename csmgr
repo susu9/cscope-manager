@@ -27,6 +27,7 @@ YELLOW = "\x1b[33m"
 NONE   = "\x1b[0m"
 
 CONFIG = {
+    'local_config_path': '.csmgr.config',
     'config_path': '~/.csmgr.config',
     'project_list': '.csmgr.project',
     'include_files': '',
@@ -172,7 +173,6 @@ def InitConfig(path, silent=True):
             Loge("Can't find config file '%s'" % config_file)
         return False
 
-    Log("Use config file: %s" % config_file)
     config = ConfigParser()
     ReadConfig(config, FakeSection(open(config_file), FakeSection.SECTION))
 
@@ -182,6 +182,21 @@ def InitConfig(path, silent=True):
         val = config.get(FakeSection.SECTION, key)
         CONFIG[key] = val
     return True
+
+def WriteConfig(path, settings):
+    config_file = os.path.expanduser(path)
+    with open(config_file, 'a') as f:
+        pass
+
+    config = ConfigParser()
+    ReadConfig(config, FakeSection(open(config_file), FakeSection.SECTION))
+
+    for key, val in settings.items():
+        config.set(FakeSection.SECTION, key, val)
+
+    with open(config_file, 'w') as f:
+        for key, val in config.items(FakeSection.SECTION):
+            f.write("%s = %s\n" % (key, val))
 
 def SetConfig(opts):
     if opts.config_file and not InitConfig(opts.config_file, False):
@@ -249,8 +264,6 @@ def GetProjectPath(path):
     return rel_path if rel_path[0] == '.' else './' + rel_path
 
 def GetProjectList(opts):
-    if not os.path.isfile(opts.project_list):
-        Logw("Can't find project list (%s)" % opts.project_list)
     pathes = LoadFileList(opts.project_list)
     if opts.update:
         return pathes
@@ -272,7 +285,7 @@ def GetProjectList(opts):
     for path in valid_pathes:
         Log('%sAdded path \'%s\' to project list' % ('(dryrun) ' if opts.dry_run else '', path))
     if not valid_pathes:
-        Logw('Pathes already exists in project list (%s).' % opts.project_list)
+        Logw('Pathes already exists in project list.')
         sys.exit(1)
 
     new_list = sorted(itertools.chain(pathes, valid_pathes))
@@ -317,13 +330,15 @@ def ParseArguments(argv):
                         help='Update %s if necessary and run commands for tag generation' % CONFIG['out_list'])
     parser.add_argument('-f', '--force', action='store_true', default=False,
                         help='delete meta data and run commands for tag generation')
+    parser.add_argument('-p', '--project-list', type=str, default=None,
+                        help='assign project list (default: %s)' % CONFIG['project_list'])
     parser.add_argument('-s', '--suffixes', action=StrAction, type=str, default=None,
                         help='assign suffixes filter (default: %s)' % CONFIG['suffixes'])
     parser.add_argument('-i', '--include-files', action=StrAction, type=str, default=None,
                         help='assign include files (default: %s)' % CONFIG['include_files'])
-    parser.add_argument('-c', '--config-file', type=str,
-                        help='assign config file (default: %s)' % CONFIG['config_path'])
-    parser.add_argument('-o', '--out-list', type=str,
+    parser.add_argument('-c', '--config-file', type=str, default=None,
+                        help='assign config file (default: %s, %s)' % (CONFIG['config_path'], CONFIG['local_config_path']))
+    parser.add_argument('-o', '--out-list', type=str, default=None,
                         help='assign the name of output list file (default: %s)' % CONFIG['out_list'])
     parser.add_argument('-m', '--meta-files', action=StrAction, type=str, default=None,
                         help='assign meta data files (default: %s)' % CONFIG['meta_files'])
@@ -341,21 +356,35 @@ def ParseArguments(argv):
                         help='show more logs')
     parser.add_argument('-v', '--version', action='version', version='1.1.2')
 
-    opts = SetConfig(parser.parse_args(argv[1:]))
+    opts = parser.parse_args(argv[1:])
+    if not opts.project_list and not opts.force and not opts.delete_meta and not bool(opts.update) ^ bool(opts.path):
+        parser.print_help()
+        sys.exit(1)
+
+    opts = SetConfig(opts)
     Logv(opts, opts.verbose)
     return opts, parser
 
 def main(argv):
     InitConfig(CONFIG['config_path'])
+    InitConfig(CONFIG['local_config_path'])
 
     opts, parser = ParseArguments(argv)
+
     if opts.delete_meta:
         return DeleteMeta(opts)
     if opts.force:
         return UpdateTag(opts, True)
-    if not bool(opts.update) ^ bool(opts.path):
-        parser.print_help()
-        return 1
+
+    if opts.project_list != CONFIG['project_list']:
+        Log('Switch to project list %s' % opts.project_list)
+        WriteConfig(CONFIG['local_config_path'], {'project_list': opts.project_list})
+        DeleteMeta(opts)
+        if not opts.path:
+            return 0
+    else:
+        Log("project list: %s" % opts.project_list)
+
     if UpdateFileList(opts, GetProjectList(opts)):
         return UpdateTag(opts)
     return 0

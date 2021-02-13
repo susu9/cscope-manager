@@ -38,9 +38,10 @@ delim_end = ****************************************
 
 ## Usage
 ```
-usage: csmgr [-h] [-u] [-f] [-s SUFFIXES] [-i INCLUDE_FILES] [-c CONFIG_FILE]
-             [-o OUT_LIST] [-m META_FILES] [-e EXCLUDE_DIRS] [-d] [--dry-run]
-             [--max-display MAX_DISPLAY] [-x EXEC_CMDS] [--verbose] [-v]
+usage: csmgr [-h] [-u] [-f] [-p PROJECT_LIST] [-s SUFFIXES] [-i INCLUDE_FILES]
+             [-c CONFIG_FILE] [-o OUT_LIST] [-m META_FILES] [-e EXCLUDE_DIRS]
+             [-d] [--dry-run] [--max-display MAX_DISPLAY] [-x EXEC_CMDS]
+             [--verbose] [-v]
              [path [path ...]]
 
 positional arguments:
@@ -53,13 +54,16 @@ optional arguments:
   -u, --update          Update cscope.files if necessary and run commands for
                         tag generation
   -f, --force           delete meta data and run commands for tag generation
+  -p PROJECT_LIST, --project-list PROJECT_LIST
+                        assign project list (default: .csmgr.project)
   -s SUFFIXES, --suffixes SUFFIXES
-                        assign suffixes filter (default: .c .h .js .cpp .py
-                        .scss .css .java)
+                        assign suffixes filter (default: .cc .c .h .js .cpp
+                        .py .scss .css .java)
   -i INCLUDE_FILES, --include-files INCLUDE_FILES
                         assign include files (default: )
   -c CONFIG_FILE, --config-file CONFIG_FILE
-                        assign config file (default: ~/.csmgr.config)
+                        assign config file (default: ~/.csmgr.config,
+                        .csmgr.config)
   -o OUT_LIST, --out-list OUT_LIST
                         assign the name of output list file (default:
                         cscope.files)
