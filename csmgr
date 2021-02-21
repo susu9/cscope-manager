@@ -126,15 +126,15 @@ class FileListMgr:
 
         if suffixCheck and not path.endswith(tuple(self.opts.suffixes)):
             return
-
+        rel_path = os.path.relpath(path)
         list_count = self.list_count
-        if path in list_count:
-            if list_count[path]:
-                list_count[path] = 0
+        if rel_path in list_count:
+            if list_count[rel_path]:
+                list_count[rel_path] = 0
             return
 
-        self.Show('Add %s' % path)
-        list_count[path] = 0
+        self.Show('Add %s' % rel_path)
+        list_count[rel_path] = 0
         self.addCount += 1
 
     def FilterDir(self, folder):
@@ -143,7 +143,7 @@ class FileListMgr:
                 if self.IsExclude(os.path.relpath(path, folder)):
                     continue;
                 full_path = os.path.join(path, f)
-                self.FilterFile(os.path.relpath(full_path), f not in self.opts.include_files)
+                self.FilterFile(full_path, f not in self.opts.include_files)
 
 def TaskDecorator(start_msg=None, end_msg='[done]'):
     def decorator(func):
@@ -276,16 +276,21 @@ def GetProjectList(opts):
     valid_pathes = set([GetProjectPath(path) for path in opts.path])
     for path1 in pathes:
         for path2 in list(valid_pathes):
+            isRedundent = False
             if os.path.isfile(path2):
-                continue
-            if path2.startswith(path1):
+                if path1 == path2:
+                    isRedundent = True
+            elif path2.startswith(path1):
+                isRedundent = True
+
+            if isRedundent:
                 Logw('Redundent path %s (under %s)' % (path2, path1))
                 valid_pathes.remove(path2)
 
     for path in valid_pathes:
         Log('%sAdded path \'%s\' to project list' % ('(dryrun) ' if opts.dry_run else '', path))
     if not valid_pathes:
-        Logw('Pathes already exists in project list.')
+        Logw('Nothing to update.')
         sys.exit(1)
 
     new_list = sorted(itertools.chain(pathes, valid_pathes))
@@ -380,11 +385,11 @@ def main(argv):
         Log('Switch to project list %s' % opts.project_list)
         WriteConfig(CONFIG['local_config_path'], {'project_list': opts.project_list})
         DeleteMeta(opts)
-        if not opts.path:
-            return 0
     else:
         Log("project list: %s" % opts.project_list)
 
+    if not opts.update and not opts.path:
+        return 0
     if UpdateFileList(opts, GetProjectList(opts)):
         return UpdateTag(opts)
     return 0
